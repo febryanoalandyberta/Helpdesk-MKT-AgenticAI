@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MKT Helpdesk Architecture Guide</title>
+<style>
+@media print {
+  @page { margin: 0; } /* Menghilangkan header dan footer bawaan browser (Tanggal, URL, Page Number) */
+  body { margin: 2cm; }
+}
+body { font-family: "Segoe UI", Arial, sans-serif; line-height: 1.6; color: #333; }
+h1 { font-size: 26px; text-align: center; color: #1a252f; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 5px; }
+h2 { color: #2980b9; border-bottom: 1px solid #bdc3c7; padding-bottom: 5px; margin-top: 30px; page-break-after: avoid; }
+h3 { color: #2c3e50; margin-top: 20px; page-break-after: avoid; }
+p, li { font-size: 14px; text-align: justify; }
+code { background-color: #f8f9fa; padding: 2px 5px; border-radius: 4px; font-family: Consolas, monospace; color: #e74c3c; font-size: 13px; border: 1px solid #e9ecef; }
+.highlight { background-color: #f1f8ff; padding: 10px; border-left: 4px solid #0366d6; margin-bottom: 20px; text-align: center; font-weight: bold; color: #0366d6; font-size: 14px;}
+.table-container { margin: 20px 0; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 13px; }
+th { background-color: #f4f6f7; color: #2c3e50; }
+.note { background-color: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; font-size: 13px; margin: 15px 0; }
+</style>
+</head>
+<body>
+
+<h1>MKT Helpdesk Agentic AI Automation<br><span style="font-size: 18px; color: #7f8c8d;">Technical Architecture & Operational Guide</span></h1>
+<div class="highlight">Dokumen Resmi Presentasi Head Dept - Confidential</div>
+
+<h2>1. Pendahuluan & Gambaran Umum (Overview)</h2>
+<p>MKT Helpdesk Agentic AI Automation adalah platform resolusi IT tingkat lanjut (Next-Gen ITSM) yang menggabungkan sistem <i>Ticketing</i> tradisional, pemantauan perangkat keras proaktif (IoT/WMI Sensor), dan kecerdasan buatan (CrewAI). Sistem ini dirancang untuk mendiagnosa, menjawab, dan meresolusi kendala secara otomatis (Auto-Pilot) baik yang dilaporkan oleh Manusia (via Zammad & Telegram) maupun oleh Mesin (via Hardware Agent).</p>
+<p>Arsitektur utama mengusung konsep <b>Microservices</b> yang di-<i>containerization</i> menggunakan Docker, memastikan skalabilitas, keamanan, dan kemudahan proses <i>deployment</i> di On-Premise maupun Cloud.</p>
+
+<h2>2. Arsitektur Sistem Secara Detail (Deep Dive)</h2>
+<p>Sistem ini terbagi menjadi 6 pilar utama yang saling berkomunikasi melalui protokol REST API dan Webhook:</p>
+
+<h3>2.1. Frontend (User Interface)</h3>
+<ul>
+<li><b>Teknologi:</b> Vanilla HTML5, CSS3, JavaScript modern (ES6), dan Vite sebagai <i>build tool</i>.</li>
+<li><b>Fitur Auto-Pilot (Real-Time):</b> Menerapkan sistem Auto-Polling (melalui <code>setInterval</code> di <code>app.js</code>) yang menyegarkan data Dashboard dan Incident Memory setiap 10 detik tanpa *flicker* layar.</li>
+<li><b>Sistem Notifikasi:</b> <i>Badge notification</i> pintar yang mendeteksi data insiden baru menggunakan <code>localStorage</code>. Angka merah akan otomatis hilang saat halaman insiden dibuka.</li>
+<li><b>Fungsi:</b> Memvisualisasikan metrik KPI (Open Tickets, SLA, MTTR) dan menyajikan UI estetik berstandar tinggi untuk <i>monitoring</i>.</li>
+</ul>
+
+<h3>2.2. Backend API Server</h3>
+<ul>
+<li><b>Teknologi:</b> Python 3.11 dipadukan dengan framework <b>FastAPI</b> yang asinkron (<i>async/await</i>).</li>
+<li><b>Peran Utama:</b> Menjadi jembatan utama (<i>Gateway</i>). Semua data masuk lewat sini sebelum diproses.</li>
+<li><b>Zammad Polling Mechanism:</b> Terdapat <i>background task</i> di <code>zammad_webhook.py</code> yang mem-<i>poll</i> tiket dari Zammad setiap 15 detik (diatur di <code>ZAMMAD_POLL_INTERVAL</code> pada <code>config.py</code>).</li>
+<li><b>Hardware Webhook Receiver:</b> Menyediakan endpoint <code>/api/devices/{device_id}/hardware-alert</code> untuk menerima status kerusakan (kabel LAN/USB tercabut) dari PC Kasir.</li>
+</ul>
+
+<h3>2.3. Telegram Bot Integration (Sistem Komunikasi)</h3>
+<ul>
+<li><b>Teknologi:</b> Telegram Bot API (terintegrasi di backend dan CrewAI).</li>
+<li><b>Peran:</b> Menjadi alternatif pelaporan tiket bagi Kru/Kasir selain Zammad, sekaligus menjadi sistem *Push Notification* bagi tim MKT IT.</li>
+<li><b>Alur Kerja (Workflow):</b>
+    <ol>
+    <li>Kru melaporkan masalah ke Bot Telegram Helpdesk.</li>
+    <li>Pesan diteruskan ke Backend FastAPI melalui Webhook.</li>
+    <li>AI Agent menganalisis masalah, dan AI dapat langsung membalas chat ke Kru via Telegram.</li>
+    <li>Jika AI mendeteksi *hardware error* parah, AI akan menge-tag grup IT MKT di Telegram untuk eskalasi.</li>
+    </ol>
+</li>
+</ul>
+
+<h3>2.4. Agentic AI Engine (CrewAI + RAG)</h3>
+<ul>
+<li><b>Teknologi:</b> CrewAI Framework, Gemini 2.0 Flash (LLM), ChromaDB (Vector Database).</li>
+<li><b>Sistem Multi-Agen:</b>
+    <ul>
+    <li><b>Classifier Agent:</b> Bertugas membaca awal keluhan, menentukan tingkat urgensi (Severity), dan klasifikasi masalah (Hardware/Software/Network).</li>
+    <li><b>Knowledge Agent:</b> Menggunakan <i>tools</i> <code>KnowledgeSearch</code> untuk membongkar ChromaDB mencari SOP atau rekam jejak penyelesaian masa lalu.</li>
+    <li><b>Resolution Agent:</b> Mengeksekusi penyelesaian. Jika masalah tingkat dasar (Tier 0), ia memandu pelapor secara langsung. Jika masalah mendalam (Tier 1), ia mengeskalasikan masalah ke Human-in-The-Loop (HITL).</li>
+    </ul>
+</li>
+<li><b>RAG (Retrieval-Augmented Generation):</b> Menggunakan <i>ChromaDB</i>. Seluruh log historis Excel (1100+ baris) telah disaring dan di-*ingest* menjadi 21 Kasus Inti (Knowledge Base). AI tidak akan pernah "halu" karena jawabannya dibatasi hanya merujuk pada ChromaDB ini.</li>
+</ul>
+
+<h3>2.5. Database & Message Broker</h3>
+<ul>
+<li><b>PostgreSQL 16:</b> Database relasional utama penyimpan <i>Incident Memory</i>, Data Zammad, Konfigurasi Telegram, dan *Audit Trails*. Sangat persisten karena menggunakan Docker Volumes.</li>
+<li><b>Redis 7:</b> <i>In-Memory Store</i> berkecepatan tinggi. Digunakan untuk sinkronisasi antrean tugas (Task Queueing) antara Backend dan AI, serta mem-<i>bypass</i> beban request berlebih.</li>
+</ul>
+
+<h3>2.6. Hardware Monitor Agent (Client-Side)</h3>
+<ul>
+<li><b>Teknologi:</b> PowerShell Script (<code>hardware_monitor.ps1</code>).</li>
+<li><b>Mekanisme:</b> Skrip ini didaftarkan sebagai <i>Windows Service</i> (via <code>install_service.bat</code>) agar berjalan otomatis <i>invisible</i> saat PC Kasir/FNB menyala. Menggunakan WMI (<i>Windows Management Instrumentation</i>) untuk mendeteksi *Event* kabel USB / LAN terputus secara aktual, lalu menembak payload JSON ke Webhook Backend.</li>
+</ul>
+
+---
+
+<h2>3. Panduan Operasional Sistem (Start-up & Usage)</h2>
+
+<h3>A. Mengaktifkan Seluruh Infrastruktur</h3>
+<ol>
+<li>Buka aplikasi <b>Docker Desktop</b> pada Windows Server, pastikan mesin berjalan.</li>
+<li>Arahkan Command Prompt/Terminal ke direktori <code>D:\Helpdesk MKT Agentic AI Automation</code>.</li>
+<li>Jalankan file eksekusi: <code>start_all.bat</code>.</li>
+<li>Skrip akan secara pintar melakukan *build* ulang *image* jika ada pembaruan kode, lalu mengaktifkan 5 kontainer utama: <code>mkt_postgres</code>, <code>mkt_redis</code>, <code>mkt_chromadb</code>, <code>mkt_backend</code>, dan <code>mkt_crewai</code>.</li>
+</ol>
+
+<h3>B. Menggunakan Dashboard (Frontend)</h3>
+<ul>
+<li>Akses URL: <code>http://localhost:8000</code> atau alamat IP server (Contoh: <code>http://192.168.1.10:8000</code>).</li>
+<li>Halaman tidak perlu di-<i>refresh</i> manual oleh staf MKT. Sistem Auto-Polling berjalan setiap 10 detik. Jika ada *hardware alert* dari site, lencana (badge) notifikasi angka berwarna merah akan langsung muncul di panel sisi kiri (Sidebar).</li>
+</ul>
+
+---
+
+<h2>4. Manajemen Bug & Pemecahan Masalah (Troubleshooter Guide)</h2>
+<p>Buku manual wajib bagi PIC IT / Programmer untuk menganalisa masalah di masa depan:</p>
+
+<table>
+<tr>
+  <th>Komponen / Gejala</th>
+  <th>Akar Masalah (Root Cause)</th>
+  <th>Cara Resolusi (Solusi Pemrograman)</th>
+</tr>
+<tr>
+  <td><b>Zammad</b>: Tiket telat masuk / Webhook tidak merespon.</td>
+  <td>Rate Limiting dari server Zammad, atau polling interval terlalu lama/terlalu cepat.</td>
+  <td>Buka <code>backend/config.py</code>. Cek konstanta <code>ZAMMAD_POLL_INTERVAL</code>. Pastikan diset ke 15 detik. Restart backend dengan <code>docker restart mkt_backend</code>.</td>
+</tr>
+<tr>
+  <td><b>Frontend</b>: UI berantakan atau data lambat (Tersendat).</td>
+  <td>Browser menyimpan <i>Cache</i> dari CSS/JS versi lama, atau Endpoint Backend kelebihan beban.</td>
+  <td>Lakukan Hard Refresh di browser (Ctrl+F5). Cek <code>app.js</code>, pastikan durasi <code>setInterval</code> tidak di bawah 10000ms.</td>
+</tr>
+<tr>
+  <td><b>Hardware Agent</b>: Notifikasi LAN putus tidak muncul di Dashboard.</td>
+  <td>Service PowerShell terhenti di PC kasir, atau IP Backend berubah.</td>
+  <td>Buka PC Kasir yang bermasalah. Jalankan <code>uninstall_service.bat</code> lalu jalankan ulang <code>install_service.bat</code> sebagai Administrator. Pastikan URL Webhook di skrip PowerShell sudah sesuai dengan IP Server.</td>
+</tr>
+<tr>
+  <td><b>CrewAI / RAG</b>: AI memberikan jawaban yang melenceng / Tidak tahu SOP terbaru.</td>
+  <td>Vektor Database ChromaDB belum memiliki dokumen SOP versi terbaru yang baru saja disahkan.</td>
+  <td>1. Edit file <code>IT_Helpdesk_Knowledge_Base.md</code> dan tambahkan kasus baru.<br>2. Jalankan ulang skrip penanaman data: <code>docker exec mkt_crewai python ingest_rag.py</code>.<br>3. AI akan otomatis belajar dalam hitungan detik.</td>
+</tr>
+<tr>
+  <td><b>Telegram</b>: Bot tidak membalas pesan.</td>
+  <td>Token Bot Expired atau Webhook Telegram terputus oleh Firewall.</td>
+  <td>Cek file konfigurasi <code>.env</code> di dalam folder Backend & CrewAI. Pastikan <code>TELEGRAM_BOT_TOKEN</code> valid. Cek log kontainer backend: <code>docker logs mkt_backend</code>.</td>
+</tr>
+</table>
+
+<h2>5. Keunggulan Strategis (Elevator Pitch)</h2>
+<ol>
+<li><b>Resolusi Detik Itu Juga (Zero Latency):</b> Agen pintar (Script Powershell) mendeteksi perangkat fisik rusak secara instan tanpa perlu kasir mengetik keluhan. Begitu kabel lepas, sistem RAG langsung merekomendasikan solusi kabel *kendor*.</li>
+<li><b>Omnichannel Terpusat:</b> Penyatuan Telegram, Zammad, dan Sensor Hardware ke dalam satu jalur urat nadi (FastAPI) yang dipantau oleh satu "Otak" (CrewAI).</li>
+<li><b>Pemisahan Otoritas (Front-Facing vs HITL):</b> AI sangat cerdas mengetahui batasan; instruksi *remote server* akan diisolasi dan dieskalasikan diam-diam ke IT Pusat, sementara instruksi mudah (*Restart / Cek Kabel*) diberikan langsung ke Kasir.</li>
+</ol>
+
+<div class="note"><b>Pernyataan Jaminan Arsitektur:</b> Seluruh subsistem berjalan di atas arsitektur yang terisolasi sempurna. Kegagalan satu kontainer (misal: Zammad down) tidak akan membuat sistem Auto-Polling Hardware menjadi terhenti, berkat implementasi <i>Asynchronous Gateway</i>.</div>
+
+<p style="text-align: center; color: #7f8c8d; margin-top: 50px; font-size: 12px;"><i>Generated by MKT Agentic AI Architecture Blueprinting (Confidential)</i></p>
+
+</body>
+</html>

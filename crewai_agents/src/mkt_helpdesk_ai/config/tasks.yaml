@@ -1,0 +1,132 @@
+triage_task:
+  description: >
+    Analyze the following helpdesk ticket and provide a complete triage report.
+
+    TICKET DATA:
+    - Ticket ID: {ticket_id}
+    - Title: {title}
+    - Description: {description}
+    - Site: {site_name}
+    - Device: {device_name}
+    - Reporter: {reporter_name}
+    - Severity: {severity}
+
+    YOUR TASKS:
+    1. Analyze and understand the issue description.
+    2. Detect and confirm the affected site and device.
+    3. Classify the issue category (HARDWARE/SOFTWARE/NETWORK/PRINTING/PAYMENT/APPLICATION/OTHER).
+    4. Determine severity (CRITICAL/HIGH/MEDIUM/LOW).
+    5. Search the knowledge base for relevant SOPs using `knowledge_search`.
+    6. Search incident memory for similar past incidents using `incident_memory_search`.
+    7. Generate specific, actionable recommendations based on found SOPs and past incidents.
+    8. Decide next action:
+        - Jika yakin 100%: Berikan jawaban auto-resolution.
+        - Jika ragu atau severity CRITICAL: ESCALATE to Tier 1.
+
+    GUARDRAILS:
+    - DO NOT execute commands on any server.
+    - DO NOT modify any configurations.
+    - DO NOT restart any services.
+    - DO NOT close the ticket without proof of resolution.
+    - ALWAYS write ALL text in Bahasa Indonesia.
+    - DO NOT include Confidence Score or SOP references.
+    - ALWAYS explain your reasoning.
+  expected_output: >
+    Return ONLY a valid JSON object. Keep text short (max 2 sentences).
+    {
+      "analysis": "Akar masalah singkat dalam Bahasa Indonesia.",
+      "recommendation": "Langkah perbaikan singkat dalam Bahasa Indonesia.",
+      "root_cause": "Penyebab utama dalam Bahasa Indonesia"
+    }
+  agent: tier0_triage_agent
+
+technical_diagnosis_task:
+  description: >
+    Perform technical diagnostic investigation for the following escalated incident.
+
+    ESCALATION DATA:
+    - Ticket ID: {ticket_id}
+    - Site: {site_name}
+    - Device: {device_name}
+    - IP Address: {ip_address}
+    - Device Type: {device_type}
+    - Issue: {issue_description}
+    - Telegram Group: {telegram_group_id}
+
+    CRITICAL CONDITIONAL CHECK:
+    First, review the output from Tier 0 Triage Task.
+    IF Tier 0 Confidence Score is >= 85% AND Severity is NOT CRITICAL:
+    - SKIP all diagnostic steps.
+    - Return output stating: "Diagnosis skipped - Ticket auto-resolved by Tier 0."
+    OTHERWISE, proceed with the DIAGNOSTIC WORKFLOW below:
+
+    DIAGNOSTIC WORKFLOW:
+    1. Search incident memory for similar past incidents on this device/site type.
+    2. Ping the device IP to confirm reachability: use `ping_host`.
+    3. Check critical ports (e.g., 22 SSH, 3389 RDP, 80/443 HTTP, 8080 app port): use `check_port`.
+    4. If device is reachable, collect system logs: use `get_system_logs`.
+    5. Check status of key services: use `get_service_status`.
+    6. Check disk usage (full disk = common POS failure): use `get_disk_usage`.
+    7. Check CPU and memory: use `get_cpu_memory_usage`.
+    8. Analyze all collected data to determine root cause.
+    9. Generate specific corrective recommendations.
+    10. Send escalation summary to Telegram: use `telegram_notify`.
+
+    GUARDRAILS:
+    - ONLY execute read-only commands (ping, port check, systemctl status, df, free, logs).
+    - NEVER restart services.
+    - NEVER delete files.
+    - NEVER modify configurations.
+    - NEVER run destructive commands.
+    - ALL actions must be logged in audit trail.
+    - If root cause CANNOT be determined: escalate to human PIC immediately.
+  expected_output: >
+    - Device Status: [ONLINE/OFFLINE/DEGRADED]
+    - Root Cause: [Detailed root cause]
+    - Evidence: [What diagnostics revealed]
+    - Recommendation: [Specific corrective actions for human PIC]
+    - Requires Human Action: [YES/NO]
+    - Action Items: [Numbered list of steps for PIC]
+  agent: tier1_diagnostic_agent
+
+knowledge_search_task:
+  description: >
+    Search for SOPs and knowledge base articles related to:
+    Category: {category}
+    Symptom: {symptom}
+    Device Type: {device_type}
+
+    Find the most appropriate handling procedures and provide specific SOP references.
+  expected_output: >
+    List of relevant SOPs with reference numbers, handling steps, and estimated resolution time.
+  agent: knowledge_agent
+
+escalation_notification_task:
+  description: >
+    Send escalation notification for the following ticket to Telegram:
+    Ticket ID: {ticket_id}
+    Site: {site_name}
+    Device: {device_name}
+    Severity: {severity}
+    Issue: {issue_summary}
+    Root Cause: {root_cause}
+    Recommendation: {recommendation}
+    PIC: {pic_name}
+    Telegram Group: {telegram_group_id}
+
+    Format the message clearly according to MKT standard templates.
+  expected_output: >
+    Confirmation of Telegram notification delivery with message preview and timestamp.
+  agent: escalation_agent
+
+monitoring_update_task:
+  description: >
+    Update the monitoring dashboard for site: {site_name}
+    Device statuses: {device_statuses}
+    Recently resolved incident: {resolved_ticket_id}
+
+    Calculate metrics: uptime %, MTTR, SLA compliance.
+    Save to incident memory for pattern learning.
+  expected_output: >
+    Latest dashboard metrics update, status of all devices at the site, and summary of resolved incidents.
+  agent: monitoring_agent

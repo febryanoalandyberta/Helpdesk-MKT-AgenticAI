@@ -1,0 +1,16 @@
+[Unit]
+Description=MKT Helpdesk Agentic AI Automation Service
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=mkt-bryan
+WorkingDirectory=/home/mkt-bryan/DATA/Helpdesk MKT Agentic AI Automation
+ExecStart="/home/mkt-bryan/DATA/Helpdesk MKT Agentic AI Automation/start_all.sh"
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

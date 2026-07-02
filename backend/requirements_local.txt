@@ -1,0 +1,43 @@
+# FastAPI & Server
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Database
+sqlalchemy
+# asyncpg
+alembic
+# psycopg2-binary
+
+# Redis
+redis
+aioredis
+
+
+# HTTP Client
+httpx
+aiohttp
+
+# Authentication
+python-jose[cryptography]
+bcrypt
+passlib[bcrypt]
+
+# Utilities
+pydantic
+pydantic-settings
+python-dotenv
+pendulum
+
+
+# Telegram
+python-telegram-bot
+
+# Monitoring & Logging
+loguru
+prometheus-client
+
+# Testing
+pytest
+pytest-asyncio
+httpx

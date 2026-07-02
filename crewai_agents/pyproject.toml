@@ -1,0 +1,29 @@
+[project]
+name = "mkt-helpdesk-ai"
+version = "0.1.0"
+description = "MKT Helpdesk Agentic AI — Multi-Agent CrewAI untuk PT Megakreasi Tech"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[google-genai,litellm]>=0.102.0",
+    "crewai-tools>=0.33.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.32.0",
+    "pydantic>=2.10.0",
+    "loguru>=0.7.3",
+    "httpx>=0.28.1",
+    "paramiko>=5.0.0",
+    "icmplib>=3.0.4",
+    "psutil>=7.2.2",
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.1",
+]
+
+[project.scripts]
+run_crew = "mkt_helpdesk_ai.main:kickoff"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"

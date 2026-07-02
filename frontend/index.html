@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>MKT Helpdesk AI — Dashboard Monitoring</title>
+<meta name="description" content="Helpdesk MKT Agentic AI Automation — Real-time monitoring dashboard untuk 18 site Sam's Studio's"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN PAGE ═══════════════ -->
+<div id="loginPage" class="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">⚡</div>
+      <h1>MKT Helpdesk AI</h1>
+      <p>Sam's Studio's Cinema Network — PT Megakreasi Tech</p>
+    </div>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="loginUsername" placeholder="Masukkan username" autocomplete="username" required/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Masukkan password" autocomplete="current-password" required/>
+      </div>
+      <div id="loginError" class="login-error" style="display:none"></div>
+      <button type="submit" class="btn-primary login-btn" id="loginBtn">Masuk</button>
+    </form>
+    <p class="login-footer">MKT Helpdesk AI v1.0 &copy; 2024 PT Megakreasi Tech</p>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">⚡</div>
+    <div class="logo-text">
+      <span class="logo-main">MKT AI</span>
+      <span class="logo-sub">Helpdesk System</span>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#" class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">📊</span><span>Dashboard</span>
+    </a>
+    <a href="#" class="nav-item" data-page="tickets">
+      <span class="nav-icon">🎫</span><span>Tiket</span>
+      <span class="nav-badge" id="badge-open">0</span>
+    </a>
+    <a href="#" class="nav-item" data-page="sites">
+      <span class="nav-icon">🏢</span><span>Sites</span>
+    </a>
+    <a href="#" class="nav-item" data-page="devices">
+      <span class="nav-icon">🖥️</span><span>Perangkat</span>
+    </a>
+    <a href="#" class="nav-item" data-page="incidents">
+      <span class="nav-icon">🧠</span><span>Incident Memory</span>
+      <span class="nav-badge" id="badge-incidents" style="display:none">0</span>
+    </a>
+    <a href="#" class="nav-item" data-page="tier1" style="display:none">
+      <span class="nav-icon">🔬</span><span>Tier 1 Diagnostic</span>
+    </a>
+    <a href="#" class="nav-item" data-page="telegram">
+      <span class="nav-icon">💬</span><span>Telegram Notif</span>
+    </a>
+    <a href="#" class="nav-item" data-page="workflow" style="display:none">
+      <span class="nav-icon">🔄</span><span>Workflow (11 Steps)</span>
+    </a>
+    <a href="#" class="nav-item" data-page="zammad" style="display:none">
+      <span class="nav-icon">🎫</span><span>Zammad Status</span>
+    </a>
+    <a href="#" class="nav-item" data-page="audit">
+      <span class="nav-icon">📋</span><span>Audit Log</span>
+    </a>
+    <!-- Hanya muncul untuk SUPER_ADMIN dan USER_ADMIN -->
+    <a href="#" class="nav-item nav-admin-only" data-page="users" id="navUsers" style="display:none">
+      <span class="nav-icon">👥</span><span>Manajemen User</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="agent-status">
+      <div class="pulse-dot"></div>
+      <span>CrewAI Online</span>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="main-wrap">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" id="hamburger">☰</button>
+      <div class="breadcrumb" id="breadcrumb">Dashboard</div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-box">
+        <input type="text" id="globalSearch" placeholder="Cari tiket, site, device..." />
+        <span>🔍</span>
+      </div>
+      <div class="topbar-time" id="topbarTime"></div>
+      <button class="btn-primary btn-sm" onclick="showNewTicketModal()" id="btnNewTicket">+ Tiket Baru</button>
+      <div class="user-menu" id="userMenu">
+        <div class="avatar" id="avatarBtn" onclick="toggleUserDropdown()">A</div>
+        <div class="user-dropdown" id="userDropdown" style="display:none">
+          <div class="user-dropdown-info">
+            <div class="user-dropdown-name" id="dropdownName">—</div>
+            <div class="user-dropdown-role" id="dropdownRole">—</div>
+          </div>
+          <hr style="border-color:var(--border);margin:8px 0">
+          <a href="#" class="user-dropdown-item" onclick="handleLogout()">🚪 Logout</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- PAGES -->
+  <main class="content">
+
+    <!-- ═══════════════ PAGE: DASHBOARD ═══════════════ -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <h1>Dashboard Monitoring</h1>
+        <p>Real-time overview — Sam's Studio's 18 Sites · 72 POS Devices</p>
+      </div>
+
+      <!-- KPI CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-red">
+          <div class="kpi-icon">🔴</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Tiket Terbuka</div>
+            <div class="kpi-value" id="kpi-open">—</div>
+            <div class="kpi-sub">Perlu penanganan</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-orange">
+          <div class="kpi-icon">⚠️</div>
+          <div class="kpi-body">
+            <div class="kpi-label">SLA Breached</div>
+            <div class="kpi-value" id="kpi-sla">—</div>
+            <div class="kpi-sub">Melewati batas waktu</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-green">
+          <div class="kpi-icon">✅</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Auto-Resolution Rate</div>
+            <div class="kpi-value" id="kpi-auto">—</div>
+            <div class="kpi-sub">Diselesaikan AI Tier 0</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-icon">⏱️</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Rata-rata MTTR</div>
+            <div class="kpi-value" id="kpi-mttr">—</div>
+            <div class="kpi-sub">Mean Time To Resolve</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-purple">
+          <div class="kpi-icon">🖥️</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Device Online</div>
+            <div class="kpi-value" id="kpi-devices">—</div>
+            <div class="kpi-sub">Dari 72 total perangkat</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-teal">
+          <div class="kpi-icon">📅</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Tiket Hari Ini</div>
+            <div class="kpi-value" id="kpi-today">—</div>
+            <div class="kpi-sub" id="kpi-resolved-today">— diselesaikan</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHARTS ROW -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>AI Confidence Trend</h3>
+            <span class="chart-badge">7 Hari Terakhir</span>
+          </div>
+          <canvas id="confidenceChart" height="200"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>Tiket by Severity</h3>
+          </div>
+          <canvas id="severityChart" height="200"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>Tiket by Kategori</h3>
+          </div>
+          <canvas id="categoryChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- SITE HEALTH GRID -->
+      <div class="section-header">
+        <h2>Site Health — 18 Lokasi Sam's Studio's</h2>
+        <button class="btn-ghost btn-sm" onclick="loadSiteHealth()">🔄 Refresh</button>
+      </div>
+      <div class="site-grid" id="siteGrid">
+        <div class="loading-state">Memuat data site...</div>
+      </div>
+
+      <!-- RECENT TICKETS -->
+      <div class="section-header">
+        <h2>Tiket Terbaru</h2>
+        <a href="#" class="btn-ghost btn-sm" data-page="tickets">Lihat Semua →</a>
+      </div>
+      <div class="table-card">
+        <table class="data-table" id="recentTicketsTable">
+          <thead>
+            <tr>
+              <th>ID</th><th>Judul</th><th>Site</th><th>Severity</th>
+              <th>Status</th><th>Confidence</th><th>Waktu</th>
+            </tr>
+          </thead>
+          <tbody id="recentTicketsBody">
+            <tr><td colspan="7" class="loading-state">Memuat tiket...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: TICKETS ═══════════════ -->
+    <div id="page-tickets" class="page">
+      <div class="page-header">
+        <h1>Manajemen Tiket</h1>
+        <button class="btn-primary" onclick="showNewTicketModal()">+ Tiket Baru</button>
+      </div>
+      <div class="filter-bar">
+        <select id="filterStatus" onchange="loadTickets()">
+          <option value="">Semua Status</option>
+          <option value="NEW">Baru</option>
+          <option value="ANALYZING">Menganalisis</option>
+          <option value="TIER0_PROCESSING">Tier 0</option>
+          <option value="TIER1_PROCESSING">Tier 1</option>
+          <option value="ESCALATED">Eskalasi</option>
+          <option value="WAITING_INFO">Menunggu Info</option>
+          <option value="RESOLVED">Selesai</option>
+        </select>
+        <select id="filterSeverity" onchange="loadTickets()">
+          <option value="">Semua Severity</option>
+          <option value="CRITICAL">Critical</option>
+          <option value="HIGH">High</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="LOW">Low</option>
+        </select>
+        <input type="text" id="ticketSearch" placeholder="Cari tiket..." oninput="filterTickets()"/>
+      </div>
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID Zammad</th><th>Judul</th><th>Site</th><th>Severity</th>
+              <th>Status</th><th>AI Tier</th><th>Confidence</th><th>Dibuat</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="ticketsBody">
+            <tr><td colspan="9" class="loading-state">Memuat tiket...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: SITES ═══════════════ -->
+    <div id="page-sites" class="page">
+      <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h1>Daftar Site</h1>
+          <p>Lokasi Bioskop Sam's Studio's</p>
+        </div>
+        <button class="btn-primary" onclick="showAddSiteModal()">+ Tambah Site</button>
+      </div>
+      <div class="cards-grid" id="sitesCards">
+        <div class="loading-state">Memuat sites...</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: DEVICES ═══════════════ -->
+    <div id="page-devices" class="page">
+      <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h1>Inventori Perangkat</h1>
+          <p>72 POS Devices · 4 per site</p>
+        </div>
+        <button class="btn-primary" onclick="showNewDeviceModal()">+ Tambah Perangkat</button>
+      </div>
+      <div class="filter-bar">
+        <select id="filterDeviceType" onchange="loadDevices()">
+          <option value="">Semua Tipe</option>
+          <option value="POS_TICKETING">POS Ticketing</option>
+          <option value="POS_FNB">POS FNB</option>
+        </select>
+        <select id="filterDeviceStatus" onchange="loadDevices()">
+          <option value="">Semua Status</option>
+          <option value="ONLINE">Online</option>
+          <option value="OFFLINE">Offline</option>
+          <option value="MAINTENANCE">Maintenance</option>
+        </select>
+      </div>
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nama Device</th><th>Tipe</th><th>IP Address</th><th>OS</th>
+              <th>Status</th><th>Last Ping</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="devicesBody">
+            <tr><td colspan="7" class="loading-state">Memuat perangkat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- ═══════════════ FLOATING PING TERMINAL ═══════════════ -->
+    <div id="floatingTerminal" class="table-card" style="display: none; position: fixed; bottom: 24px; right: 24px; width: 450px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); z-index: 9999; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #38bdf8; border-radius: 8px; overflow: hidden;">
+      <div class="chart-header" style="border-bottom: 1px solid #1e293b; padding: 10px 16px; background: #0b1120;">
+        <h3 style="color: #38bdf8; margin: 0; font-family: monospace; font-size: 14px;">>_ Terminal Ping</h3>
+        <div style="display: flex; gap: 4px;">
+          <button class="btn-ghost btn-sm" onclick="clearPingTerminal()" style="color: #94a3b8; padding: 2px 8px;">Clear</button>
+          <button class="btn-ghost btn-sm" onclick="closePingTerminal()" style="color: #ef4444; padding: 2px 8px;">✕</button>
+        </div>
+      </div>
+      <div id="pingTerminal" style="padding: 16px; color: #a5b4fc; font-family: monospace; font-size: 13px; height: 220px; overflow-y: auto; white-space: pre-wrap; line-height: 1.5;">Menunggu perintah ping...</div>
+    </div>
+
+    <!-- ═══════════════ PAGE: INCIDENTS ═══════════════ -->
+    <div id="page-incidents" class="page">
+      <div class="page-header">
+        <h1>Incident Memory</h1>
+        <p>Long-term AI memory untuk pattern learning</p>
+      </div>
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr><th>Tanggal & Waktu</th><th>Summary</th><th>Root Cause</th><th>Site</th><th>Kategori</th><th>Tier</th></tr>
+          </thead>
+          <tbody id="incidentsBody">
+            <tr><td colspan="6" class="loading-state">Memuat incident memory...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: TIER 1 DIAGNOSTIC ═══════════════ -->
+    <div id="page-tier1" class="page">
+      <div class="page-header">
+        <h1>🔬 Tier 1 — Active Diagnostics</h1>
+        <p>Sesuai diagram: Agent AI Tier 1 ↔ POS Devices (SSH, Ping, Port Check)</p>
+      </div>
+      <div id="tier1Cards" class="loading-state">Memuat data diagnosis aktif...</div>
+    </div>
+
+    <!-- ═══════════════ PAGE: TELEGRAM ═══════════════ -->
+    <div id="page-telegram" class="page">
+      <div class="page-header">
+        <h1>💬 Telegram Notification Log</h1>
+        <p>Sesuai diagram: Tier 0 &amp; Tier 1 → Telegram Group per site</p>
+      </div>
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr><th>Waktu</th><th>Ticket</th><th>Site</th><th>Telegram Group</th><th>Severity</th><th>Dari</th><th>Preview</th><th>Status</th></tr>
+          </thead>
+          <tbody id="telegramBody">
+            <tr><td colspan="8" class="loading-state">Memuat log Telegram...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: WORKFLOW ═══════════════ -->
+    <div id="page-workflow" class="page">
+      <div class="page-header">
+        <h1>🔄 Workflow — 11 Steps Otomasi</h1>
+        <p>Sesuai instruksi.md Section 5: Workflow Logic lengkap dari tiket masuk hingga dashboard diperbarui</p>
+      </div>
+      <div class="workflow-diagram" id="workflowSteps">
+        <div class="loading-state">Memuat workflow status...</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: ZAMMAD STATUS ═══════════════ -->
+    <div id="page-zammad" class="page">
+      <div class="page-header">
+        <h1>🎫 Zammad Integration Status</h1>
+        <p>Sesuai diagram: Site/Customer ↔ Zammad Framework ↔ Agent AI Tier 0</p>
+      </div>
+      <div id="zammadStatusCard" class="loading-state">Memuat status Zammad...</div>
+      <div class="section-header" style="margin-top:24px">
+        <h2>Test: Simulasi Webhook dari Zammad</h2>
+      </div>
+      <div class="table-card" style="padding:20px">
+        <p style="color:var(--text-secondary);margin-bottom:16px">Klik tombol di bawah untuk mensimulasikan Zammad mengirim tiket baru via webhook ke sistem ini.</p>
+        <button class="btn-primary" onclick="simulateZammadWebhook()">📨 Simulasi Tiket Masuk dari Zammad</button>
+        <div id="webhookResult" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: AUDIT ═══════════════ -->
+    <div id="page-audit" class="page">
+      <div class="page-header">
+        <h1>Audit Log</h1>
+        <p>Semua aktivitas agent dan pengguna tercatat di sini</p>
+      </div>
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr><th>Waktu</th><th>Actor</th><th>Action</th><th>Target</th><th>Result</th><th>Detail</th></tr>
+          </thead>
+          <tbody id="auditBody">
+            <tr><td colspan="6" class="loading-state">Memuat audit log...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: USER MANAGEMENT ═══════════════ -->
+    <div id="page-users" class="page">
+      <div class="page-header">
+        <h1>👥 Manajemen User</h1>
+        <button class="btn-primary" onclick="showAddUserModal()">+ Tambah User</button>
+      </div>
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Username</th><th>Nama Lengkap</th><th>Email</th>
+              <th>Role</th><th>Status</th><th>Last Login</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody">
+            <tr><td colspan="7" class="loading-state">Memuat data user...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════ MODAL: NEW TICKET ═══════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+<div class="modal" id="newTicketModal">
+  <div class="modal-header">
+    <h3>🎫 Buat Tiket Baru</h3>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-group">
+      <label>Judul Masalah *</label>
+      <input type="text" id="newTitle" placeholder="Deskripsikan masalah secara singkat"/>
+    </div>
+    <div class="form-group">
+      <label>Deskripsi Detail *</label>
+      <textarea id="newDesc" rows="4" placeholder="Jelaskan masalah secara detail..."></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nama Pelapor</label>
+        <input type="text" id="newReporter" placeholder="Nama PIC site"/>
+      </div>
+      <div class="form-group">
+        <label>Severity</label>
+        <select id="newSeverity">
+          <option value="LOW">Low</option>
+          <option value="MEDIUM" selected>Medium</option>
+          <option value="HIGH">High</option>
+          <option value="CRITICAL">Critical</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Zammad Ticket ID (opsional)</label>
+      <input type="text" id="newZammadId" placeholder="e.g. 12345"/>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-ghost" onclick="closeModal()">Batal</button>
+    <button class="btn-primary" onclick="submitNewTicket()">🤖 Kirim & Analisis AI</button>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: TICKET DETAIL ═══════════════ -->
+<div class="modal modal-wide" id="ticketDetailModal">
+  <div class="modal-header">
+    <h3 id="detailTitle">Detail Tiket</h3>
+    <button class="modal-close" onclick="closeDetailModal()">✕</button>
+  </div>
+  <div class="modal-body" id="detailBody"></div>
+  <div class="modal-footer">
+    <button class="btn-ghost" onclick="closeDetailModal()">Tutup</button>
+    <button class="btn-primary" id="btnProcessAI" onclick="triggerAI()">🤖 Proses ulang AI</button>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: ADD USER ═══════════════ -->
+<div class="modal" id="addUserModal">
+  <div class="modal-header">
+    <h3>👤 Tambah User Baru</h3>
+    <button class="modal-close" onclick="closeAddUserModal()">✕</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Username *</label>
+        <input type="text" id="addUsername" placeholder="e.g. john.doe"/>
+      </div>
+      <div class="form-group">
+        <label>Role *</label>
+        <select id="addRole">
+          <option value="OPERATOR">Operator</option>
+          <option value="GUEST">Guest / View</option>
+          <option value="USER_ADMIN" id="optUserAdmin">User Admin</option>
+          <option value="SUPER_ADMIN" id="optSuperAdmin">Super Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Nama Lengkap</label>
+      <input type="text" id="addFullName" placeholder="Nama lengkap"/>
+    </div>
+    <div class="form-group">
+      <label>Email *</label>
+      <input type="email" id="addEmail" placeholder="email@company.com"/>
+    </div>
+    <div class="form-group">
+      <label>Password *</label>
+      <input type="password" id="addPassword" placeholder="Minimal 8 karakter"/>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-ghost" onclick="closeAddUserModal()">Batal</button>
+    <button class="btn-primary" onclick="submitAddUser()">💾 Simpan User</button>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: EDIT USER ═══════════════ -->
+<div class="modal" id="editUserModal">
+  <div class="modal-header">
+    <h3>✏️ Edit User</h3>
+    <button class="modal-close" onclick="closeEditUserModal()">✕</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Username (Tidak bisa diubah)</label>
+        <input type="text" id="editUsername" disabled/>
+      </div>
+      <div class="form-group">
+        <label>Role *</label>
+        <select id="editRole">
+          <option value="OPERATOR">Operator</option>
+          <option value="GUEST">Guest / View</option>
+          <option value="USER_ADMIN">User Admin</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Nama Lengkap</label>
+      <input type="text" id="editFullName" placeholder="Nama lengkap"/>
+    </div>
+    <div class="form-group">
+      <label>Email *</label>
+      <input type="email" id="editEmail" placeholder="email@company.com"/>
+    </div>
+    <div class="form-group">
+      <label>Password Baru (Opsional)</label>
+      <input type="password" id="editPassword" placeholder="Isi hanya jika ingin ganti password"/>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-ghost" onclick="closeEditUserModal()">Batal</button>
+    <button class="btn-primary" onclick="submitEditUser()">💾 Simpan Perubahan</button>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: NEW DEVICE ═══════════════ -->
+<div class="modal" id="newDeviceModal">
+  <div class="modal-header">
+    <h3>🖥️ Tambah Perangkat Baru</h3>
+    <button class="modal-close" onclick="closeDeviceModal()">✕</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-group">
+      <label>Site ID (contoh: SITE-IDM)</label>
+      <input type="text" id="addDeviceSiteId" placeholder="Site ID"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nama Device</label>
+        <input type="text" id="addDeviceName" placeholder="e.g. Fnb 01"/>
+      </div>
+      <div class="form-group">
+        <label>Tipe</label>
+        <select id="addDeviceType">
+          <option value="POS_TICKETING">POS Ticketing</option>
+          <option value="POS_FNB">POS FNB</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>IP Address</label>
+        <input type="text" id="addDeviceIp" placeholder="192.168.x.x"/>
+      </div>
+      <div class="form-group">
+        <label>OS</label>
+        <input type="text" id="addDeviceOs" placeholder="Windows 10"/>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-ghost" onclick="closeDeviceModal()">Batal</button>
+    <button class="btn-primary" onclick="submitNewDevice()">💾 Simpan Perangkat</button>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: EDIT DEVICE ═══════════════ -->
+<div class="modal" id="editDeviceModal">
+  <div class="modal-header">
+    <h3>✏️ Edit Perangkat</h3>
+    <button class="modal-close" onclick="closeDeviceModal()">✕</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nama Device</label>
+        <input type="text" id="editDeviceName"/>
+      </div>
+      <div class="form-group">
+        <label>Tipe</label>
+        <select id="editDeviceType">
+          <option value="POS_TICKETING">POS Ticketing</option>
+          <option value="POS_FNB">POS FNB</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>IP Address</label>
+        <input type="text" id="editDeviceIp"/>
+      </div>
+      <div class="form-group">
+        <label>OS</label>
+        <input type="text" id="editDeviceOs"/>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-ghost" onclick="closeDeviceModal()">Batal</button>
+    <button class="btn-primary" onclick="submitEditDevice()">💾 Simpan Perubahan</button>
+  </div>
+</div>
+
+<!-- MODAL SITE -->
+<div class="modal-overlay" id="siteModalOverlay" onclick="closeSiteModal()"></div>
+<div class="modal" id="siteModal">
+  <div class="modal-header">
+    <h3 id="siteModalTitle">Tambah Site</h3>
+    <button class="close-btn" onclick="closeSiteModal()">×</button>
+  </div>
+  <div class="modal-body">
+    <input type="hidden" id="siteIdField" />
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nama Site *</label>
+        <input type="text" id="siteName" placeholder="Contoh: UNG"/>
+      </div>
+      <div class="form-group">
+        <label>Kota *</label>
+        <input type="text" id="siteCity" placeholder="Contoh: Ungaran"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Timezone</label>
+        <select id="siteTimezone">
+          <option value="Asia/Jakarta">Asia/Jakarta (WIB)</option>
+          <option value="Asia/Makassar">Asia/Makassar (WITA)</option>
+          <option value="Asia/Jayapura">Asia/Jayapura (WIT)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Telegram Group ID</label>
+        <input type="text" id="siteTelegram" placeholder="-100123456"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>PIC Utama</label>
+        <input type="text" id="sitePicPrimary" placeholder="Nama PIC"/>
+      </div>
+      <div class="form-group">
+        <label>No HP PIC</label>
+        <input type="text" id="sitePicPhone" placeholder="0812..."/>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-ghost" onclick="closeSiteModal()">Batal</button>
+    <button class="btn-primary" onclick="saveSite()">💾 Simpan</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="js/app.js?v=14"></script>
+</body>
+</html>
