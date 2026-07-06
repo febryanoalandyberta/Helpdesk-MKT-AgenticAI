@@ -92,6 +92,23 @@ async def create_ticket(
     await db.commit()
     await db.refresh(ticket)
 
+    # Sync to Zammad if ticket was created from Dashboard (no zammad_ticket_id provided)
+    if not data.zammad_ticket_id:
+        from api.zammad_webhook import zammad_client
+        
+        customer_email = data.reporter_email
+        if not customer_email or "@" not in customer_email:
+            customer_email = "febryanoit@megakreasitech.com"
+            
+        zammad_id = await zammad_client.create_ticket(
+            title=data.title,
+            body=data.description,
+            customer=customer_email
+        )
+        if zammad_id:
+            ticket.zammad_ticket_id = str(zammad_id)
+            await db.commit()
+
     # Audit log
     db.add(AuditLog(
         ticket_id=str(ticket.ticket_id),

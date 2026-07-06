@@ -77,7 +77,7 @@ from models.ticket import TicketStatus
 
 _last_update_id = 0
 
-async def handle_telegram_command(text: str, chat_id: int):
+async def handle_telegram_command(text: str, chat_id: int, sender_name: str = "Telegram User"):
     parts = text.split()
     command = parts[0].lower()
     
@@ -110,6 +110,44 @@ async def handle_telegram_command(text: str, chat_id: int):
             else:
                 await send_telegram_message(f"❌ Tiket #{ticket_id_str} tidak ditemukan.", str(chat_id))
 
+    elif command == "/lapor" and len(parts) > 1:
+        description = text.replace(parts[0], "", 1).strip()
+        title = description[:50] + ("..." if len(description) > 50 else "")
+        from models.ticket import Ticket, TicketSeverity
+        from api.zammad_webhook import zammad_client
+        
+        async with AsyncSessionLocal() as db:
+            ticket = Ticket(
+                title=title,
+                description=description,
+                reporter_name=sender_name,
+                reporter_email="febryanoit@megakreasitech.com",
+                severity=TicketSeverity.MEDIUM,
+                status=TicketStatus.NEW
+            )
+            db.add(ticket)
+            await db.commit()
+            await db.refresh(ticket)
+            
+            # Sync to Zammad
+            zammad_id = await zammad_client.create_ticket(
+                title=title,
+                body=description,
+                customer="febryanoit@megakreasitech.com"
+            )
+            if zammad_id:
+                ticket.zammad_ticket_id = str(zammad_id)
+                await db.commit()
+            
+            # Trigger AI
+            from api.tickets import process_ticket_ai
+            import asyncio
+            asyncio.create_task(process_ticket_ai(str(ticket.ticket_id)))
+            
+            # Reply
+            reply_text = f"✅ <b>Laporan Diterima!</b>\n\n<b>Tiket ID:</b> #{zammad_id or str(ticket.ticket_id)[:8]}\n<b>Pelapor:</b> {sender_name}\n\n<i>Laporan sedang diproses oleh AI Agent...</i>"
+            await send_telegram_message(reply_text, str(chat_id))
+
 async def start_telegram_polling():
     global _last_update_id
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -134,9 +172,11 @@ async def start_telegram_polling():
                             message = result.get("message", {})
                             text = message.get("text", "")
                             chat_id = message.get("chat", {}).get("id")
+                            from_user = message.get("from", {})
+                            sender_name = from_user.get("first_name", "Telegram User")
                             
                             if text.startswith("/"):
-                                await handle_telegram_command(text, chat_id)
+                                await handle_telegram_command(text, chat_id, sender_name)
             except asyncio.TimeoutError:
                 pass
             except Exception as e:

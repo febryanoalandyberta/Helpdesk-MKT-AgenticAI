@@ -122,6 +122,33 @@ class ZammadClient:
             logger.error(f"[Zammad] Failed to update ticket {ticket_id}: {e}")
             return False
 
+    async def create_ticket(self, title: str, body: str, customer: str, group: str = "Users") -> Optional[int]:
+        """Buat tiket baru di Zammad dari Dashboard."""
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(
+                    f"{self.base_url}/api/v1/tickets",
+                    headers=self.headers,
+                    json={
+                        "title": title,
+                        "group": group,
+                        "customer": customer,
+                        "article": {
+                            "subject": title,
+                            "body": body,
+                            "type": "note",
+                            "internal": False
+                        }
+                    }
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                logger.info(f"[Zammad] Created ticket #{data.get('id')} from Dashboard")
+                return data.get("id")
+        except Exception as e:
+            logger.error(f"[Zammad] Failed to create ticket: {e}")
+            return None
+
     async def close_ticket(self, ticket_id: int, resolution: str) -> bool:
         """Tutup tiket Zammad setelah resolved."""
         return await self.update_ticket(ticket_id, resolution, state="closed")

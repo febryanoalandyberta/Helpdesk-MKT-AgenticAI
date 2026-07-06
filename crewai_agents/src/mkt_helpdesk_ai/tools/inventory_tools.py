@@ -93,6 +93,27 @@ class DeviceLookup(BaseTool):
                     q = q.limit(10)
                     result = await db.execute(q)
                     devices = result.scalars().all()
+                    
+                    # Fuzzy Matching Fallback
+                    if not devices:
+                        import difflib
+                        fq = select(Device)
+                        if site_id:
+                            fq = fq.where(Device.site_id == site_id)
+                        if device_type:
+                            fq = fq.where(Device.device_type == device_type.upper())
+                            
+                        all_res = await db.execute(fq)
+                        all_devices = all_res.scalars().all()
+                        
+                        device_names = [d.device_name for d in all_devices]
+                        # Find closest matches with a low cutoff to allow significant typos
+                        closest = difflib.get_close_matches(query, device_names, n=3, cutoff=0.3)
+                        
+                        if closest:
+                            logger.info(f"[DeviceLookup] Exact match failed. Fuzzy matched '{query}' to {closest}")
+                            devices = [d for d in all_devices if d.device_name in closest]
+
                     return [d.to_dict() for d in devices]
 
             loop = asyncio.new_event_loop()

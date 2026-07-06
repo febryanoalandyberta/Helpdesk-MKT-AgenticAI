@@ -21,7 +21,7 @@ class TicketPayload(BaseModel):
     severity: str
 
 @app.post("/api/analyze")
-async def analyze_ticket(payload: TicketPayload):
+def analyze_ticket(payload: TicketPayload):
     inputs = {
         "ticket_id": payload.ticket_id,
         "title": payload.title,

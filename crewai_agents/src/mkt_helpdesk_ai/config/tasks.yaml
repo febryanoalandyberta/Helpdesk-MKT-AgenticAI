@@ -32,11 +32,11 @@ triage_task:
     - DO NOT include Confidence Score or SOP references.
     - ALWAYS explain your reasoning.
   expected_output: >
-    Return ONLY a valid JSON object. Keep text short (max 2 sentences).
+    Return ONLY a valid JSON object. DO NOT copy the example text below verbatim. You MUST replace the placeholder bracket values with your actual analysis and findings based on the ticket description. Keep text short (max 2 sentences) and in Bahasa Indonesia.
     {
-      "analysis": "Akar masalah singkat dalam Bahasa Indonesia.",
-      "recommendation": "Langkah perbaikan singkat dalam Bahasa Indonesia.",
-      "root_cause": "Penyebab utama dalam Bahasa Indonesia"
+      "analysis": "[Tuliskan hasil analisis Anda secara spesifik di sini berdasarkan deskripsi masalah tiket]",
+      "recommendation": "[Tuliskan langkah perbaikan yang Anda sarankan di sini]",
+      "root_cause": "[Tuliskan dugaan akar masalah di sini]"
     }
   agent: tier0_triage_agent
 
