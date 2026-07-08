@@ -126,21 +126,31 @@ class ZammadClient:
         """Buat tiket baru di Zammad dari Dashboard."""
         try:
             async with httpx.AsyncClient(timeout=15) as client:
+                payload = {
+                    "title": title,
+                    "group": group,
+                    "customer": customer,
+                    "article": {
+                        "subject": title,
+                        "body": body,
+                        "type": "note",
+                        "internal": False
+                    }
+                }
                 resp = await client.post(
                     f"{self.base_url}/api/v1/tickets",
                     headers=self.headers,
-                    json={
-                        "title": title,
-                        "group": group,
-                        "customer": customer,
-                        "article": {
-                            "subject": title,
-                            "body": body,
-                            "type": "note",
-                            "internal": False
-                        }
-                    }
+                    json=payload
                 )
+                
+                if resp.status_code == 422:
+                    payload["customer"] = "febryanoit@megakreasitech.com"
+                    resp = await client.post(
+                        f"{self.base_url}/api/v1/tickets",
+                        headers=self.headers,
+                        json=payload
+                    )
+                    
                 resp.raise_for_status()
                 data = resp.json()
                 logger.info(f"[Zammad] Created ticket #{data.get('id')} from Dashboard")
@@ -188,51 +198,64 @@ async def zammad_webhook(
     q = await db.execute(select(Ticket).where(Ticket.zammad_ticket_id == zammad_id))
     existing = q.scalar_one_or_none()
 
-    if existing and event_type == "ticket.create":
-        return {"status": "skipped", "reason": "Ticket already exists"}
-
-    # Simpan/update tiket
-    if not existing:
-        description = article_data.get("body", "")
-        if not description:
-            description = ticket_data.get("body", "")
-
-        ticket = Ticket(
-            zammad_ticket_id=zammad_id,
-            title=ticket_data.get("title", "Untitled Ticket"),
-            description=description,
-            reporter_name=str(ticket_data.get("customer", ticket_data.get("customer_id", ""))),
-            severity=parse_zammad_priority(ticket_data),
-            status=TicketStatus.NEW,
-        )
-        db.add(ticket)
-        await db.commit()
-        await db.refresh(ticket)
-
-        db.add(AuditLog(
-            ticket_id=str(ticket.ticket_id),
-            actor="ZammadWebhook",
-            action="TICKET_RECEIVED_FROM_ZAMMAD",
-            target=f"zammad_ticket_id={zammad_id}",
-            result="SUCCESS",
-            detail=f"Event: {event_type}",
-        ))
-        await db.commit()
-
-        # Trigger AI processing di background (Step 3: CrewAI jalankan Tier 0)
-        background_tasks.add_task(trigger_ai_for_new_ticket, str(ticket.ticket_id))
-        logger.info(f"[Zammad Webhook] New ticket {ticket.ticket_id} queued for AI processing")
-        
-    elif existing and event_type == "ticket.update":
-        # Sinkronisasi status jika tiket di-update di Zammad
+    if existing:
+        # Sinkronisasi status jika tiket di-update di Zammad (misalnya closed)
         zammad_state = str(ticket_data.get("state", "")).lower()
         if zammad_state in ["closed", "resolved"]:
-            existing.status = TicketStatus.CLOSED
-            existing.resolved_at = datetime.utcnow()
-            await db.commit()
-            logger.info(f"[Zammad Webhook] Ticket {existing.ticket_id} closed from Zammad sync")
+            if existing.status != TicketStatus.CLOSED:
+                existing.status = TicketStatus.CLOSED
+                existing.resolved_at = datetime.utcnow()
+                await db.commit()
+                logger.info(f"[Zammad Webhook] Ticket {existing.ticket_id} closed from Zammad sync")
+        return {"status": "updated", "ticket_id": str(existing.ticket_id)}
 
-    return {"status": "accepted", "ticket_id": str(existing.ticket_id if existing else ticket.ticket_id)}
+    # Jika belum ada, buat tiket baru
+    description = article_data.get("body", "")
+    if not description:
+        description = ticket_data.get("body", "")
+    import re
+    
+    raw_reporter = str(ticket_data.get("customer", ticket_data.get("customer_id", "")))
+    reporter_name = raw_reporter
+    if raw_reporter.isdigit() or not raw_reporter:
+        match = re.search(r'(?i)(?:PIC|Pelapor)\s*:\s*([A-Za-z0-9\s]+)', description)
+        if match:
+            reporter_name = match.group(1).strip()
+        else:
+            reporter_name = "Pelanggan"
+
+    ticket = Ticket(
+        zammad_ticket_id=zammad_id,
+        title=ticket_data.get("title", "Untitled Ticket"),
+        description=description,
+        reporter_name=reporter_name,
+        severity=parse_zammad_priority(ticket_data),
+        status=TicketStatus.NEW,
+    )
+    db.add(ticket)
+    await db.commit()
+    await db.refresh(ticket)
+
+    db.add(AuditLog(
+        ticket_id=str(ticket.ticket_id),
+        actor="ZammadWebhook",
+        action="TICKET_RECEIVED_FROM_ZAMMAD",
+        target=f"zammad_ticket_id={zammad_id}",
+        result="SUCCESS",
+        detail=f"Event: {event_type}",
+    ))
+    await db.commit()
+
+    # Kirim sapaan awal (Greeting) langsung ke Zammad
+    reporter = ticket.reporter_name or "Kak"
+    greeting = f"Halo {reporter}! 👋\n\nTerima kasih telah menghubungi MKT Helpdesk. Laporan kendala Anda sudah kami terima dengan baik. Saat ini, MKT Agentic AI sedang menganalisis masalah Anda. Mohon tunggu sebentar ya, kami akan segera kembali dengan solusinya! 🛠️😊"
+    background_tasks.add_task(zammad_client.update_ticket, int(zammad_id), greeting)
+
+    # Trigger AI processing di background (Step 3: CrewAI jalankan Tier 0)
+    background_tasks.add_task(trigger_ai_for_new_ticket, str(ticket.ticket_id))
+    logger.info(f"[Zammad Webhook] New ticket {ticket.ticket_id} queued for AI processing and greeted")
+        
+    return {"status": "accepted", "ticket_id": str(ticket.ticket_id)}
 
 
 # ─── ACTIVE POLLING ──────────────────────────────────────────
@@ -280,12 +303,21 @@ async def poll_zammad_for_new_tickets():
                     articles = await zammad_client.get_ticket_articles(int(zammad_id))
                     if articles and len(articles) > 0:
                         description = articles[0].get("body", "")
+                import re
+                raw_reporter = str(zt.get("customer_id", zt.get("customer", "")))
+                reporter_name = raw_reporter
+                if raw_reporter.isdigit() or not raw_reporter:
+                    match = re.search(r'(?i)(?:PIC|Pelapor)\s*:\s*([A-Za-z0-9\s]+)', description)
+                    if match:
+                        reporter_name = match.group(1).strip()
+                    else:
+                        reporter_name = "Pelanggan"
 
                 ticket = Ticket(
                     zammad_ticket_id=zammad_id,
                     title=zt.get("title", "Untitled"),
                     description=description,
-                    reporter_name=str(zt.get("customer_id", zt.get("customer", ""))),
+                    reporter_name=reporter_name,
                     severity=parse_zammad_priority(zt),
                     status=TicketStatus.NEW,
                 )
@@ -299,9 +331,20 @@ async def poll_zammad_for_new_tickets():
                 await db.commit()
                 await db.refresh(ticket)
 
+                # Kirim sapaan awal (Greeting) langsung ke Zammad
+                reporter = ticket.reporter_name or "Kak"
+                greeting = f"Halo {reporter}! 👋\n\nTerima kasih telah menghubungi MKT Helpdesk. Laporan kendala Anda sudah kami terima dengan baik. Saat ini, MKT Agentic AI sedang menganalisis masalah Anda. Mohon tunggu sebentar ya, kami akan segera kembali dengan solusinya! 🛠️😊"
+                import asyncio
+                asyncio.create_task(zammad_client.update_ticket(int(zammad_id), greeting))
+
                 # Step 3: Trigger CrewAI
                 await trigger_ai_for_new_ticket(str(ticket.ticket_id))
-                _last_polled_id = max(_last_polled_id, int(zammad_id))
+            
+            # Update _last_polled_id di luar blok (berlaku untuk tiket baru & existing)
+            for zt in new_tickets:
+                zid = str(zt.get("id", ""))
+                if zid.isdigit():
+                    _last_polled_id = max(_last_polled_id, int(zid))
 
         logger.info(f"[Zammad Polling] Processed {len(new_tickets)} tickets. Last ID: {_last_polled_id}")
 
@@ -378,7 +421,10 @@ async def sync_pending_tickets(db: AsyncSession = Depends(get_db)):
     failed_details = []
     
     for t in pending_tickets:
-        customer_email = t.reporter_email or "febryanoit@megakreasitech.com"
+        customer_email = t.reporter_email
+        if not customer_email or "@" not in customer_email:
+            customer_email = "febryanoit@megakreasitech.com"
+            
         zammad_id = await zammad_client.create_ticket(
             title=t.title,
             body=t.description or "No description",

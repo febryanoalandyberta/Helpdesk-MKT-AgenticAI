@@ -22,30 +22,31 @@ def get_llm() -> str:
     Mendukung: gemini, ollama, groq, openai
     CrewAI menggunakan LiteLLM format string
     """
+    from crewai import LLM
+
     provider = os.getenv("PRIMARY_LLM", "gemini").lower()
 
     if provider == "gemini":
-        # Set API key untuk LiteLLM via env var
         os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
-        return "gemini/gemini-2.0-flash"
+        return LLM(model="gemini/gemini-2.0-flash", temperature=0.0)
 
     elif provider == "ollama":
         base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         model = os.getenv("OLLAMA_MODEL", "llama3.2")
         os.environ["OLLAMA_API_BASE"] = base_url
-        return f"ollama/{model}"
+        return LLM(model=f"ollama/{model}", temperature=0.0)
 
     elif provider == "groq":
         os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "")
-        return "groq/llama-3.1-8b-instant"
+        return LLM(model="groq/llama-3.1-8b-instant", temperature=0.0)
 
     else:
         # Default: OpenAI / Local LM Studio
-        from crewai import LLM
         return LLM(
             model=os.getenv("OPENAI_MODEL_NAME", "openai/arcee-agent@q4_k_s"),
             base_url=os.getenv("OPENAI_API_BASE", "http://10.20.0.47:11208/v1"),
             api_key=os.getenv("OPENAI_API_KEY", "sk-lm-EjscrH5t:ZOIQzUB3DdwybasHhuC4"),
+            temperature=0.0,
             max_tokens=4096,  
             timeout=300,      
         )
@@ -87,7 +88,6 @@ class MktHelpdeskCrew:
                 IncidentMemorySearch(),
                 SiteLookup(),
                 DeviceLookup(),
-                TelegramNotify(),
                 DirectoryReadTool(directory='sops'),
                 PDFSearchTool(),
                 DOCXSearchTool(),

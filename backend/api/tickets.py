@@ -260,12 +260,18 @@ async def process_ticket_ai(ticket_id: str):
                                     ticket.ai_recommendation = result_text[:800]
                             else:
                                 ai_success = False
-                                ticket.ai_analysis = "Analisis selesai (Format Non-Standar)."
-                                ticket.ai_recommendation = result_text[:800]
+                                ticket.ai_analysis = "Analisis selesai namun menemui kendala pemahaman."
+                                if "Thought:" in result_text or "Action:" in result_text:
+                                    ticket.ai_recommendation = "Analisis menunjukkan bahwa kendala ini memerlukan pengecekan lebih lanjut secara teknis. Laporan Anda telah kami teruskan (eskalasi), dan tim IT Support (PIC) kami akan segera menindaklanjutinya secara langsung. Mohon kesediaannya menunggu."
+                                else:
+                                    ticket.ai_recommendation = result_text[:800]
                         except Exception as parse_err:
                             ai_success = False
                             ticket.ai_analysis = "Analisis selesai namun gagal diekstrak secara struktural."
-                            ticket.ai_recommendation = result_text[:800]
+                            if "Thought:" in result_text or "Action:" in result_text:
+                                ticket.ai_recommendation = "Analisis menunjukkan bahwa kendala ini memerlukan pengecekan lebih lanjut secara teknis. Laporan Anda telah kami teruskan (eskalasi), dan tim IT Support (PIC) kami akan segera menindaklanjutinya secara langsung. Mohon kesediaannya menunggu."
+                            else:
+                                ticket.ai_recommendation = result_text[:800]
                             logger.warning(f"Failed to parse JSON output from CrewAI: {parse_err}")
                             
                     else:
@@ -298,11 +304,17 @@ async def process_ticket_ai(ticket_id: str):
             if ticket.zammad_ticket_id:
                 from api.zammad_webhook import zammad_client
                 state_update = "closed" if ticket.status == TicketStatus.RESOLVED else "open"
-                note = (
-                    f"🤖 MKT AI Agent (Tier 0)\n\n"
-                    f"Analisis:\n{ticket.ai_analysis}\n\n"
-                    f"Rekomendasi:\n{ticket.ai_recommendation}\n"
-                )
+                if not ai_success:
+                    note = (
+                        f"🤖 IT Helpdesk MKT\n\n"
+                        f"{ticket.ai_recommendation}\n"
+                    )
+                else:
+                    note = (
+                        f"🤖 IT Helpdesk MKT\n\n"
+                        f"{ticket.ai_analysis}\n\n"
+                        f"{ticket.ai_recommendation}\n"
+                    )
                 if ticket.status == TicketStatus.RESOLVED:
                     note += "\n\n✅ Tiket ditutup otomatis oleh AI karena tingkat akurasi solusi dipastikan sangat tinggi."
                 elif ticket.status == TicketStatus.ESCALATED:

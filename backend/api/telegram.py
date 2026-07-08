@@ -5,15 +5,16 @@ from typing import Dict, List, Any
 
 from database import get_db
 from models.audit_log import AuditLog
-from models.ticket import Ticket
+from models.ticket import Ticket, TicketStatus, TicketSeverity
 from models.site import Site
 
 router = APIRouter()
 
 import os
 import aiohttp
-import logging
-logger = logging.getLogger(__name__)
+from loguru import logger
+import asyncio
+from api.tickets import process_ticket_ai
 
 async def send_telegram_message(message_text: str, target_chat_id: str = None):
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -81,7 +82,7 @@ async def handle_telegram_command(text: str, chat_id: int, sender_name: str = "T
     parts = text.split()
     command = parts[0].lower()
     
-    if command == "/tutup" and len(parts) > 1:
+    if command.startswith("/tutup") and len(parts) > 1:
         ticket_id_str = parts[1].replace("#", "")
         from api.zammad_webhook import zammad_client
         async with AsyncSessionLocal() as db:
@@ -95,7 +96,7 @@ async def handle_telegram_command(text: str, chat_id: int, sender_name: str = "T
             else:
                 await send_telegram_message(f"❌ Tiket #{ticket_id_str} tidak ditemukan.", str(chat_id))
 
-    elif command == "/eskalasi" and len(parts) > 1:
+    elif command.startswith("/eskalasi") and len(parts) > 1:
         ticket_id_str = parts[1].replace("#", "")
         from api.zammad_webhook import zammad_client
         async with AsyncSessionLocal() as db:
@@ -110,10 +111,9 @@ async def handle_telegram_command(text: str, chat_id: int, sender_name: str = "T
             else:
                 await send_telegram_message(f"❌ Tiket #{ticket_id_str} tidak ditemukan.", str(chat_id))
 
-    elif command == "/lapor" and len(parts) > 1:
+    elif command.startswith("/lapor") and len(parts) > 1:
         description = text.replace(parts[0], "", 1).strip()
         title = description[:50] + ("..." if len(description) > 50 else "")
-        from models.ticket import Ticket, TicketSeverity
         from api.zammad_webhook import zammad_client
         
         async with AsyncSessionLocal() as db:
@@ -140,8 +140,6 @@ async def handle_telegram_command(text: str, chat_id: int, sender_name: str = "T
                 await db.commit()
             
             # Trigger AI
-            from api.tickets import process_ticket_ai
-            import asyncio
             asyncio.create_task(process_ticket_ai(str(ticket.ticket_id)))
             
             # Reply
@@ -149,7 +147,6 @@ async def handle_telegram_command(text: str, chat_id: int, sender_name: str = "T
             success = await send_telegram_message(reply_text, str(chat_id))
             
             if success:
-                from models.audit_log import AuditLog
                 db.add(AuditLog(
                     ticket_id=str(ticket.ticket_id),
                     actor=sender_name,
@@ -182,6 +179,7 @@ async def start_telegram_polling():
                             _last_update_id = max(_last_update_id, update_id)
                             
                             message = result.get("message", {})
+                            logger.info(f"[TelegramPolling] Received update: {result}")
                             text = message.get("text", "")
                             chat_id = message.get("chat", {}).get("id")
                             from_user = message.get("from", {})
@@ -189,6 +187,9 @@ async def start_telegram_polling():
                             
                             if text.startswith("/"):
                                 await handle_telegram_command(text, chat_id, sender_name)
+                    else:
+                        err_text = await resp.text()
+                        logger.error(f"[TelegramPolling] Non-200 response: {resp.status} - {err_text}")
             except asyncio.TimeoutError:
                 pass
             except Exception as e:

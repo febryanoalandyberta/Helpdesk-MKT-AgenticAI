@@ -18,15 +18,11 @@ mkdir -p "$BACKUP_DIR"
 
 # 1. Backup Backend Database
 echo "[1/4] Dumping Backend Database (helpdesk_mkt)..."
-docker exec mkt_postgres pg_dump -U mkt_user -d helpdesk_mkt -F c -f /tmp/backend_db.dump
-docker cp mkt_postgres:/tmp/backend_db.dump "$BACKUP_DIR/backend_db.dump"
-docker exec mkt_postgres rm /tmp/backend_db.dump
+docker exec mkt_postgres pg_dump -U mkt_user -d helpdesk_mkt -F c > "$BACKUP_DIR/backend_db.dump"
 
 # 2. Backup Zammad Database
 echo "[2/4] Dumping Zammad Database (zammad_production)..."
-docker exec zammad-zammad-postgresql-1 pg_dump -U zammad -d zammad_production -F c -f /tmp/zammad_db.dump
-docker cp zammad-zammad-postgresql-1:/tmp/zammad_db.dump "$BACKUP_DIR/zammad_db.dump"
-docker exec zammad-zammad-postgresql-1 rm /tmp/zammad_db.dump
+docker exec zammad-zammad-postgresql-1 pg_dump -U zammad -d zammad_production -F c > "$BACKUP_DIR/zammad_db.dump"
 
 # 3. Backup Zammad Storage (Attachments)
 echo "[3/4] Copying Zammad File Storage (Attachments)..."
