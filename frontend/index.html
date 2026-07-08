@@ -239,7 +239,11 @@
     <div id="page-tickets" class="page">
       <div class="page-header">
         <h1>Manajemen Tiket</h1>
-        <button class="btn-primary" onclick="showNewTicketModal()">+ Tiket Baru</button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div id="forceSyncResult" style="font-size: 12px; margin-right: 8px;"></div>
+          <button class="btn-primary" onclick="forceSyncZammad()" style="background-color: #ef4444; border: none; font-weight: 600;">🔄 Sync Zammad</button>
+          <button class="btn-primary" onclick="showNewTicketModal()">+ Tiket Baru</button>
+        </div>
       </div>
       <div class="filter-bar">
         <select id="filterStatus" onchange="loadTickets()">
@@ -402,6 +406,16 @@
         <p>Sesuai diagram: Site/Customer ↔ Zammad Framework ↔ Agent AI Tier 0</p>
       </div>
       <div id="zammadStatusCard" class="loading-state">Memuat status Zammad...</div>
+      
+      <div class="section-header" style="margin-top:24px">
+        <h2>Pemulihan Darurat (Disaster Recovery)</h2>
+      </div>
+      <div class="table-card" style="padding:20px">
+        <p style="color:var(--text-secondary);margin-bottom:16px">Fitur ini memaksa sistem mengirim ulang tiket yang tertahan akibat koneksi terputus.</p>
+        <button class="btn-primary" onclick="forceSyncZammad()" style="background-color: #ef4444; border: none; font-weight: 600;">🔄 Force Sync Tiket Tertahan</button>
+        <div id="forceSyncResult" style="margin-top:12px"></div>
+      </div>
+
       <div class="section-header" style="margin-top:24px">
         <h2>Test: Simulasi Webhook dari Zammad</h2>
       </div>

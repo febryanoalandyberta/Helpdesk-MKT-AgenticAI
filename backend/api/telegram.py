@@ -146,7 +146,19 @@ async def handle_telegram_command(text: str, chat_id: int, sender_name: str = "T
             
             # Reply
             reply_text = f"✅ <b>Laporan Diterima!</b>\n\n<b>Tiket ID:</b> #{zammad_id or str(ticket.ticket_id)[:8]}\n<b>Pelapor:</b> {sender_name}\n\n<i>Laporan sedang diproses oleh AI Agent...</i>"
-            await send_telegram_message(reply_text, str(chat_id))
+            success = await send_telegram_message(reply_text, str(chat_id))
+            
+            if success:
+                from models.audit_log import AuditLog
+                db.add(AuditLog(
+                    ticket_id=str(ticket.ticket_id),
+                    actor=sender_name,
+                    action="TELEGRAM_SENT",
+                    result="SUCCESS",
+                    detail="Laporan baru dari Telegram",
+                    target=str(chat_id)
+                ))
+                await db.commit()
 
 async def start_telegram_polling():
     global _last_update_id

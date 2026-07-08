@@ -1028,6 +1028,26 @@ async function simulateZammadWebhook() {
   }
 }
 
+async function forceSyncZammad() {
+  const el = document.getElementById('forceSyncResult');
+  el.innerHTML = '<span style="color:var(--accent)">⏳ Memproses sinkronisasi tiket...</span>';
+  
+  const res = await apiFetch('/api/zammad/sync-pending', { method: 'POST', body: JSON.stringify({}) });
+  
+  if (res) {
+    el.innerHTML = `<div style="background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.3);border-radius:8px;padding:12px;font-size:13px">
+      ✅ <strong>Sinkronisasi Selesai!</strong><br/>
+      Berhasil: <strong>${res.success_count}</strong> tiket<br/>
+      Gagal: <strong>${res.failed_count}</strong> tiket<br/>
+      <span style="color:var(--text-secondary)">Pesan Sistem: ${res.message}</span>
+    </div>`;
+    showToast(`✅ Sinkronisasi paksa berhasil!`, 'success');
+  } else {
+    el.innerHTML = `<div style="color:#f87171">❌ Gagal melakukan sinkronisasi paksa ke server.</div>`;
+    showToast('Gagal memanggil endpoint sync', 'error');
+  }
+}
+
 // ─── USER MANAGEMENT ──────────────────────────
 async function loadUsers() {
   const data = await apiFetch('/api/users/');

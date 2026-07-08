@@ -335,7 +335,7 @@ async def process_ticket_ai(ticket_id: str):
                         ticket_id=str(ticket_id), actor="Tier1Agent", action="TELEGRAM_SENT",
                         result="FAILED", detail="Gagal mengirim ke Telegram API."
                     ))
-                    await db.commit()
+                await db.commit()
 
             logger.info(f"[TicketsAPI] AI processing complete for {ticket_id}")
 

@@ -359,3 +359,59 @@ async def test_trigger(background_tasks: BackgroundTasks):
     """Test endpoint: simulate menerima tiket dari Zammad."""
     background_tasks.add_task(poll_zammad_for_new_tickets)
     return {"status": "polling triggered manually"}
+
+
+@router.post("/sync-pending")
+async def sync_pending_tickets(db: AsyncSession = Depends(get_db)):
+    """
+    Force manual sync for all tickets that failed to sync to Zammad (zammad_ticket_id IS NULL).
+    This ignores the 3-time retry limit.
+    """
+    q = await db.execute(select(Ticket).where(Ticket.zammad_ticket_id == None))
+    pending_tickets = q.scalars().all()
+    
+    if not pending_tickets:
+        return {"success_count": 0, "failed_count": 0, "message": "No pending tickets found."}
+        
+    success_count = 0
+    fail_count = 0
+    failed_details = []
+    
+    for t in pending_tickets:
+        customer_email = t.reporter_email or "febryanoit@megakreasitech.com"
+        zammad_id = await zammad_client.create_ticket(
+            title=t.title,
+            body=t.description or "No description",
+            customer=customer_email
+        )
+        
+        if zammad_id:
+            t.zammad_ticket_id = str(zammad_id)
+            db.add(AuditLog(
+                ticket_id=str(t.ticket_id),
+                actor="ManualSync",
+                action="ZAMMAD_SYNC_SUCCESS",
+                result="SUCCESS",
+                detail=f"Synced as #{zammad_id}"
+            ))
+            success_count += 1
+        else:
+            db.add(AuditLog(
+                ticket_id=str(t.ticket_id),
+                actor="ManualSync",
+                action="ZAMMAD_SYNC_FAILED",
+                result="FAILED",
+                detail="Manual sync failed."
+            ))
+            fail_count += 1
+            failed_details.append(str(t.ticket_id))
+            
+    await db.commit()
+    
+    return {
+        "success_count": success_count,
+        "failed_count": fail_count,
+        "failed_ticket_ids": failed_details,
+        "message": f"Sync complete. {success_count} success, {fail_count} failed."
+    }
+
