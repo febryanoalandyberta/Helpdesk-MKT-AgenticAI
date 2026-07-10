@@ -6,7 +6,7 @@ Total: 18 sites × 4 devices = 72 POS minimum
 import uuid
 from datetime import datetime
 from enum import Enum as PyEnum
-from sqlalchemy import Column, String, DateTime, Boolean, Text, Enum, ForeignKey
+from sqlalchemy import Column, String, DateTime, Boolean, Text, Enum, ForeignKey, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from database import Base
