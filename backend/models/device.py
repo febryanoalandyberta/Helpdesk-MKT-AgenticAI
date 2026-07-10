@@ -31,7 +31,7 @@ class Device(Base):
     __tablename__ = "devices"
 
     device_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    site_id = Column(UUID(as_uuid=True), ForeignKey("sites.site_id"), nullable=False)
+    site_id = Column(UUID(as_uuid=True), ForeignKey("sites.site_id"), nullable=True)
 
     device_name = Column(String(200), nullable=False)
     device_type = Column(Enum(DeviceType), nullable=False, default=DeviceType.POS_TICKETING)
@@ -45,6 +45,17 @@ class Device(Base):
     operating_system = Column(String(100), nullable=True)
     os_version = Column(String(100), nullable=True)
     hardware_model = Column(String(200), nullable=True)
+
+    # Health & Telemetry
+    cpu_usage = Column(Float, nullable=True)
+    ram_usage = Column(Float, nullable=True)
+    disk_usage = Column(Float, nullable=True)
+    temperature = Column(Float, nullable=True)
+    
+    # User Activity
+    current_active_app = Column(String(200), nullable=True)
+    current_active_url = Column(String(500), nullable=True)
+    last_health_check = Column(DateTime, nullable=True)
 
     # Remote Access (encrypted reference)
     credentials_reference = Column(String(500), nullable=True)
@@ -71,7 +82,7 @@ class Device(Base):
     def to_dict(self):
         return {
             "device_id": str(self.device_id),
-            "site_id": str(self.site_id),
+            "site_id": str(self.site_id) if self.site_id else None,
             "device_name": self.device_name,
             "device_type": self.device_type,
             "ip_address": self.ip_address,
@@ -80,6 +91,13 @@ class Device(Base):
             "operating_system": self.operating_system,
             "os_version": self.os_version,
             "hardware_model": self.hardware_model,
+            "cpu_usage": self.cpu_usage,
+            "ram_usage": self.ram_usage,
+            "disk_usage": self.disk_usage,
+            "temperature": self.temperature,
+            "current_active_app": self.current_active_app,
+            "current_active_url": self.current_active_url,
+            "last_health_check": self.last_health_check.isoformat() if self.last_health_check else None,
             "ssh_port": self.ssh_port,
             "status": self.status,
             "is_active": self.is_active,

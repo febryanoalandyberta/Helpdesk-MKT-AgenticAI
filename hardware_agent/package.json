@@ -1,0 +1,11 @@
+{
+  "name": "hardware-agent",
+  "version": "1.0.0",
+  "description": "MKT Helpdesk AI Hardware Agent",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.5.8"
+  }
+}

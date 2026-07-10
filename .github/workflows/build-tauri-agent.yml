@@ -1,0 +1,39 @@
+name: Build Tauri Agent (Windows)
+
+on:
+  push:
+    paths:
+      - 'hardware_agent/**'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install Frontend Dependencies
+        working-directory: ./hardware_agent
+        run: npm install
+
+      - name: Build Tauri App
+        working-directory: ./hardware_agent
+        run: npm run tauri build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: MKT_Hardware_Agent_Installer
+          path: hardware_agent/src-tauri/target/release/bundle/nsis/*.exe

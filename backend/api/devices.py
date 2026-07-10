@@ -13,6 +13,25 @@ from models.device import Device, DeviceStatus
 router = APIRouter(prefix="/api/devices", tags=["Devices"])
 
 
+class AutoRegisterRequest(BaseModel):
+    mac_address: str
+    hostname: str
+    ip_address: str
+    operating_system: Optional[str] = None
+    os_version: Optional[str] = None
+    hardware_model: Optional[str] = None
+
+
+class TelemetryRequest(BaseModel):
+    ip_address: str
+    cpu_usage: float
+    ram_usage: float
+    disk_usage: float
+    temperature: float
+    current_active_app: Optional[str] = None
+    current_active_url: Optional[str] = None
+
+
 class CreateDeviceRequest(BaseModel):
     site_id: str
     device_name: str
@@ -58,6 +77,73 @@ async def get_device(device_id: str, db: AsyncSession = Depends(get_db)):
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
     return device.to_dict()
+
+
+@router.post("/auto-register")
+async def auto_register_device(data: AutoRegisterRequest, db: AsyncSession = Depends(get_db)):
+    # Check if a device with this MAC address already exists
+    q = await db.execute(select(Device).where(Device.mac_address == data.mac_address))
+    device = q.scalar_one_or_none()
+
+    if device:
+        # Update existing device info
+        device.ip_address = data.ip_address
+        device.hostname = data.hostname
+        device.last_seen = datetime.utcnow()
+        device.status = DeviceStatus.ONLINE
+        await db.commit()
+        await db.refresh(device)
+        return device.to_dict()
+
+    # Create new UNASSIGNED device
+    try:
+        device_data = data.dict()
+        device_data["device_name"] = data.hostname
+        device_data["device_type"] = "POS_TICKETING" # Default
+        device_data["status"] = DeviceStatus.ONLINE
+        device_data["last_seen"] = datetime.utcnow()
+        device_data["notes"] = "Auto-registered via Hardware Agent"
+        # site_id is left as NULL (nullable=True)
+        
+        device = Device(**device_data)
+        db.add(device)
+        await db.commit()
+        await db.refresh(device)
+        return device.to_dict()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to auto-register: {str(e)}")
+
+
+@router.post("/{device_id}/telemetry")
+async def receive_telemetry(
+    device_id: str,
+    data: TelemetryRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    q = await db.execute(select(Device).where(Device.device_id == device_id))
+    device = q.scalar_one_or_none()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    # Update Health Metrics
+    device.cpu_usage = data.cpu_usage
+    device.ram_usage = data.ram_usage
+    device.disk_usage = data.disk_usage
+    device.temperature = data.temperature
+    device.current_active_app = data.current_active_app
+    device.current_active_url = data.current_active_url
+    device.last_health_check = datetime.utcnow()
+    
+    # Update IP if changed (Failover tracking)
+    if device.ip_address != data.ip_address:
+        device.ip_address = data.ip_address
+
+    device.status = DeviceStatus.ONLINE
+    device.last_seen = datetime.utcnow()
+    
+    await db.commit()
+    return {"message": "Telemetry updated"}
 
 
 @router.post("/")

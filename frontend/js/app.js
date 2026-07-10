@@ -508,7 +508,7 @@ async function loadDevices() {
   if (status) params.append('status', status);
   const data = await apiFetch('/api/devices/?' + params);
   const tbody = document.getElementById('devicesBody');
-  if (!data?.devices?.length) { tbody.innerHTML = '<tr><td colspan="7" class="loading-state">Tidak ada perangkat.</td></tr>'; return; }
+  if (!data?.devices?.length) { tbody.innerHTML = '<tr><td colspan="9" class="loading-state">Tidak ada perangkat.</td></tr>'; return; }
   tbody.innerHTML = data.devices.map(d => `
     <tr>
       <td>
@@ -518,12 +518,21 @@ async function loadDevices() {
       <td><span class="badge badge-medium">${d.device_type}</span></td>
       <td><code style="color:#22d3a0">${d.ip_address || '—'}</code></td>
       <td style="color:#8892b0">${d.operating_system || '—'}</td>
-      <td>${deviceStatusBadge(d.status)}</td>
-      <td style="color:#8892b0;font-size:11px">${d.last_ping ? timeAgo(d.last_ping) : '—'}</td>
       <td>
-        <button class="btn-success" style="margin-right:4px" onclick="pingDevice('${d.device_id}', '${d.ip_address || ''}', this)">📡 Ping</button>
-        <button class="btn-primary" style="margin-right:4px" onclick="showEditDeviceModal('${d.device_id}', '${d.device_name}', '${d.device_type}', '${d.ip_address || ''}', '${d.operating_system || ''}')">✏️</button>
-        <button class="btn-danger" onclick="deleteDevice('${d.device_id}', '${d.device_name}')">🗑️</button>
+        <div style="font-size:11px; margin-bottom:4px">CPU: <strong>${d.cpu_usage ? d.cpu_usage.toFixed(1) + '%' : '—'}</strong></div>
+        <div style="font-size:11px; margin-bottom:4px">RAM: <strong>${d.ram_usage ? d.ram_usage.toFixed(1) + '%' : '—'}</strong></div>
+        <div style="font-size:11px">Suhu: <strong>${d.temperature ? d.temperature.toFixed(1) + '°C' : '—'}</strong></div>
+      </td>
+      <td>
+        <div style="font-size:11px; margin-bottom:4px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.current_active_app || ''}">App: <span style="color:#a855f7">${d.current_active_app || '—'}</span></div>
+        <div style="font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.current_active_url || ''}">URL: <a href="${d.current_active_url || '#'}" target="_blank" style="color:#38bdf8; text-decoration:none;">${d.current_active_url || '—'}</a></div>
+      </td>
+      <td>${deviceStatusBadge(d.status)}</td>
+      <td style="color:#8892b0;font-size:11px">${d.last_health_check ? timeAgo(d.last_health_check) : (d.last_ping ? timeAgo(d.last_ping) : '—')}</td>
+      <td>
+        <button class="btn-success" style="margin-right:4px; margin-bottom:4px;" onclick="pingDevice('${d.device_id}', '${d.ip_address || ''}', this)">📡 Ping</button>
+        <button class="btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="showEditDeviceModal('${d.device_id}', '${d.device_name}', '${d.device_type}', '${d.ip_address || ''}', '${d.operating_system || ''}')">✏️</button>
+        <button class="btn-danger" style="margin-bottom:4px;" onclick="deleteDevice('${d.device_id}', '${d.device_name}')">🗑️</button>
       </td>
     </tr>`).join('');
 }

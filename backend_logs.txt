@@ -1,0 +1,50 @@
+mkt_backend  | WHERE tickets.zammad_ticket_id = $1::VARCHAR
+mkt_backend  | 2026-07-08 11:08:18,350 INFO sqlalchemy.engine.Engine [cached since 3062s ago] ('4',)
+mkt_backend  | 2026-07-08 11:08:18,351 INFO sqlalchemy.engine.Engine SELECT tickets.ticket_id, tickets.zammad_ticket_id, tickets.site_id, tickets.device_id, tickets.title, tickets.description, tickets.reporter_name, tickets.reporter_email, tickets.category, tickets.severity, tickets.status, tickets.confidence_score, tickets.ai_analysis, tickets.ai_recommendation, tickets.sop_reference, tickets.root_cause, tickets.tier_level, tickets.escalated, tickets.escalated_to, tickets.escalated_at, tickets.resolution, tickets.resolved_at, tickets.resolved_by, tickets.sla_deadline, tickets.sla_breached, tickets.raw_data, tickets.telegram_message_id, tickets.created_at, tickets.updated_at 
+mkt_backend  | FROM tickets 
+mkt_backend  | WHERE tickets.zammad_ticket_id = $1::VARCHAR
+mkt_backend  | 2026-07-08 11:08:18,351 INFO sqlalchemy.engine.Engine [cached since 3062s ago] ('5',)
+mkt_backend  | 2026-07-08 11:08:18,353 INFO sqlalchemy.engine.Engine SELECT tickets.ticket_id, tickets.zammad_ticket_id, tickets.site_id, tickets.device_id, tickets.title, tickets.description, tickets.reporter_name, tickets.reporter_email, tickets.category, tickets.severity, tickets.status, tickets.confidence_score, tickets.ai_analysis, tickets.ai_recommendation, tickets.sop_reference, tickets.root_cause, tickets.tier_level, tickets.escalated, tickets.escalated_to, tickets.escalated_at, tickets.resolution, tickets.resolved_at, tickets.resolved_by, tickets.sla_deadline, tickets.sla_breached, tickets.raw_data, tickets.telegram_message_id, tickets.created_at, tickets.updated_at 
+mkt_backend  | FROM tickets 
+mkt_backend  | WHERE tickets.zammad_ticket_id = $1::VARCHAR
+mkt_backend  | 2026-07-08 11:08:18,353 INFO sqlalchemy.engine.Engine [cached since 3062s ago] ('6',)
+mkt_backend  | 2026-07-08 11:08:18,354 INFO sqlalchemy.engine.Engine SELECT tickets.ticket_id, tickets.zammad_ticket_id, tickets.site_id, tickets.device_id, tickets.title, tickets.description, tickets.reporter_name, tickets.reporter_email, tickets.category, tickets.severity, tickets.status, tickets.confidence_score, tickets.ai_analysis, tickets.ai_recommendation, tickets.sop_reference, tickets.root_cause, tickets.tier_level, tickets.escalated, tickets.escalated_to, tickets.escalated_at, tickets.resolution, tickets.resolved_at, tickets.resolved_by, tickets.sla_deadline, tickets.sla_breached, tickets.raw_data, tickets.telegram_message_id, tickets.created_at, tickets.updated_at 
+mkt_backend  | FROM tickets 
+mkt_backend  | WHERE tickets.zammad_ticket_id = $1::VARCHAR
+mkt_backend  | 2026-07-08 11:08:18,355 INFO sqlalchemy.engine.Engine [cached since 3062s ago] ('7',)
+mkt_backend  | 2026-07-08 11:08:18,356 INFO sqlalchemy.engine.Engine SELECT tickets.ticket_id, tickets.zammad_ticket_id, tickets.site_id, tickets.device_id, tickets.title, tickets.description, tickets.reporter_name, tickets.reporter_email, tickets.category, tickets.severity, tickets.status, tickets.confidence_score, tickets.ai_analysis, tickets.ai_recommendation, tickets.sop_reference, tickets.root_cause, tickets.tier_level, tickets.escalated, tickets.escalated_to, tickets.escalated_at, tickets.resolution, tickets.resolved_at, tickets.resolved_by, tickets.sla_deadline, tickets.sla_breached, tickets.raw_data, tickets.telegram_message_id, tickets.created_at, tickets.updated_at 
+mkt_backend  | FROM tickets 
+mkt_backend  | WHERE tickets.zammad_ticket_id = $1::VARCHAR
+mkt_backend  | 2026-07-08 11:08:18,356 INFO sqlalchemy.engine.Engine [cached since 3062s ago] ('8',)
+mkt_backend  | 2026-07-08 11:08:18,357 INFO sqlalchemy.engine.Engine SELECT tickets.ticket_id, tickets.zammad_ticket_id, tickets.site_id, tickets.device_id, tickets.title, tickets.description, tickets.reporter_name, tickets.reporter_email, tickets.category, tickets.severity, tickets.status, tickets.confidence_score, tickets.ai_analysis, tickets.ai_recommendation, tickets.sop_reference, tickets.root_cause, tickets.tier_level, tickets.escalated, tickets.escalated_to, tickets.escalated_at, tickets.resolution, tickets.resolved_at, tickets.resolved_by, tickets.sla_deadline, tickets.sla_breached, tickets.raw_data, tickets.telegram_message_id, tickets.created_at, tickets.updated_at 
+mkt_backend  | FROM tickets 
+mkt_backend  | WHERE tickets.zammad_ticket_id = $1::VARCHAR
+mkt_backend  | 2026-07-08 11:08:18,357 INFO sqlalchemy.engine.Engine [cached since 3062s ago] ('9',)
+mkt_backend  | 2026-07-08 11:08:18,359 INFO sqlalchemy.engine.Engine SELECT tickets.ticket_id, tickets.zammad_ticket_id, tickets.site_id, tickets.device_id, tickets.title, tickets.description, tickets.reporter_name, tickets.reporter_email, tickets.category, tickets.severity, tickets.status, tickets.confidence_score, tickets.ai_analysis, tickets.ai_recommendation, tickets.sop_reference, tickets.root_cause, tickets.tier_level, tickets.escalated, tickets.escalated_to, tickets.escalated_at, tickets.resolution, tickets.resolved_at, tickets.resolved_by, tickets.sla_deadline, tickets.sla_breached, tickets.raw_data, tickets.telegram_message_id, tickets.created_at, tickets.updated_at 
+mkt_backend  | FROM tickets 
+mkt_backend  | WHERE tickets.zammad_ticket_id = $1::VARCHAR
+mkt_backend  | 2026-07-08 11:08:18,359 INFO sqlalchemy.engine.Engine [cached since 3062s ago] ('10',)
+mkt_backend  | 2026-07-08 11:08:18,360 INFO sqlalchemy.engine.Engine SELECT tickets.ticket_id, tickets.zammad_ticket_id, tickets.site_id, tickets.device_id, tickets.title, tickets.description, tickets.reporter_name, tickets.reporter_email, tickets.category, tickets.severity, tickets.status, tickets.confidence_score, tickets.ai_analysis, tickets.ai_recommendation, tickets.sop_reference, tickets.root_cause, tickets.tier_level, tickets.escalated, tickets.escalated_to, tickets.escalated_at, tickets.resolution, tickets.resolved_at, tickets.resolved_by, tickets.sla_deadline, tickets.sla_breached, tickets.raw_data, tickets.telegram_message_id, tickets.created_at, tickets.updated_at 
+mkt_backend  | FROM tickets 
+mkt_backend  | WHERE tickets.zammad_ticket_id = $1::VARCHAR
+mkt_backend  | 2026-07-08 11:08:18,360 INFO sqlalchemy.engine.Engine [cached since 3062s ago] ('11',)
+mkt_backend  | 2026-07-08 11:08:18,362 INFO sqlalchemy.engine.Engine SELECT tickets.ticket_id, tickets.zammad_ticket_id, tickets.site_id, tickets.device_id, tickets.title, tickets.description, tickets.reporter_name, tickets.reporter_email, tickets.category, tickets.severity, tickets.status, tickets.confidence_score, tickets.ai_analysis, tickets.ai_recommendation, tickets.sop_reference, tickets.root_cause, tickets.tier_level, tickets.escalated, tickets.escalated_to, tickets.escalated_at, tickets.resolution, tickets.resolved_at, tickets.resolved_by, tickets.sla_deadline, tickets.sla_breached, tickets.raw_data, tickets.telegram_message_id, tickets.created_at, tickets.updated_at 
+mkt_backend  | FROM tickets 
+mkt_backend  | WHERE tickets.zammad_ticket_id = $1::VARCHAR
+mkt_backend  | 2026-07-08 11:08:18,362 INFO sqlalchemy.engine.Engine [cached since 3062s ago] ('12',)
+mkt_backend  | 2026-07-08 11:08:18,363 INFO sqlalchemy.engine.Engine ROLLBACK
+mkt_backend  | 2026-07-08 11:08:18.364 | INFO     | api.zammad_webhook:poll_zammad_for_new_tickets:317 - [Zammad Polling] Processed 12 tickets. Last ID: 0
+mkt_backend  | 2026-07-08 11:08:18,637 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+mkt_backend  | 2026-07-08 11:08:18,638 INFO sqlalchemy.engine.Engine SELECT incident_memories.incident_id, incident_memories.ticket_id, incident_memories.summary, incident_memories.root_cause, incident_memories.resolution, incident_memories.category, incident_memories.severity, incident_memories.site_name, incident_memories.device_name, incident_memories.device_type, incident_memories.tags, incident_memories.embedding_id, incident_memories.resolution_time_minutes, incident_memories.tier_resolved, incident_memories.confidence_at_resolution, incident_memories.sop_used, incident_memories.successful, incident_memories.occurred_at, incident_memories.created_at, incident_memories.updated_at 
+mkt_backend  | FROM incident_memories ORDER BY incident_memories.created_at DESC 
+mkt_backend  |  LIMIT $1::INTEGER
+mkt_backend  | 2026-07-08 11:08:18,638 INFO sqlalchemy.engine.Engine [cached since 3067s ago] (50,)
+mkt_backend  | 2026-07-08 11:08:18,641 INFO sqlalchemy.engine.Engine COMMIT
+mkt_backend  | INFO:     10.20.0.193:46512 - "GET /api/incidents/ HTTP/1.1" 200 OK
+mkt_backend  | 2026-07-08 11:08:18,646 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+mkt_backend  | 2026-07-08 11:08:18,646 INFO sqlalchemy.engine.Engine SELECT tickets.ticket_id, tickets.zammad_ticket_id, tickets.site_id, tickets.device_id, tickets.title, tickets.description, tickets.reporter_name, tickets.reporter_email, tickets.category, tickets.severity, tickets.status, tickets.confidence_score, tickets.ai_analysis, tickets.ai_recommendation, tickets.sop_reference, tickets.root_cause, tickets.tier_level, tickets.escalated, tickets.escalated_to, tickets.escalated_at, tickets.resolution, tickets.resolved_at, tickets.resolved_by, tickets.sla_deadline, tickets.sla_breached, tickets.raw_data, tickets.telegram_message_id, tickets.created_at, tickets.updated_at 
+mkt_backend  | FROM tickets ORDER BY tickets.created_at DESC 
+mkt_backend  |  LIMIT $1::INTEGER OFFSET $2::INTEGER
+mkt_backend  | 2026-07-08 11:08:18,646 INFO sqlalchemy.engine.Engine [cached since 3071s ago] (50, 0)
+mkt_backend  | 2026-07-08 11:08:18,649 INFO sqlalchemy.engine.Engine COMMIT
+mkt_backend  | INFO:     10.20.0.193:46512 - "GET /api/tickets/ HTTP/1.1" 200 OK

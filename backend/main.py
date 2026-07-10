@@ -23,6 +23,7 @@ from api.users import router as users_router
 from api.telegram import router as telegram_router
 from api.tier1 import router as tier1_router
 from api.zammad_webhook import router as zammad_router, start_zammad_polling
+from api.agent_chat import router as agent_chat_router
 
 
 @asynccontextmanager
@@ -97,6 +98,7 @@ app.include_router(incidents_router)
 app.include_router(telegram_router, prefix="/api/telegram", tags=["telegram"])
 app.include_router(tier1_router, prefix="/api/tier1", tags=["tier1"])
 app.include_router(zammad_router)
+app.include_router(agent_chat_router)
 
 # Serve frontend
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
