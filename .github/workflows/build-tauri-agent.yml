@@ -28,15 +28,6 @@ jobs:
         working-directory: ./hardware_agent
         run: npm install
 
-      - name: Download Missing Icons
-        working-directory: ./hardware_agent/src-tauri
-        run: |
-          mkdir -p icons
-          curl -L "https://github.githubassets.com/favicons/favicon.ico" -o icons/icon.ico
-          curl -L "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" -o icons/32x32.png
-          curl -L "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" -o icons/128x128.png
-          curl -L "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" -o icons/128x128@2x.png
-
       - name: Build Tauri App
         working-directory: ./hardware_agent
         run: npm run tauri build
