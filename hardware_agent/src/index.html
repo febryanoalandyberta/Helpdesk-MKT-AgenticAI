@@ -56,9 +56,11 @@
     function addMessage(text, isUser) {
       const div = document.createElement('div');
       div.className = `msg ${isUser ? 'msg-user' : 'msg-ai'}`;
-      div.innerText = text;
+      // Replace newlines with <br> for multi-line AI responses
+      div.innerHTML = text.replace(/\n/g, '<br>');
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
+      return div;
     }
 
     async function sendMessage() {
@@ -68,11 +70,14 @@
       addMessage(text, true);
       input.value = '';
       
+      // Add loading message
+      const loadingBubble = addMessage("Mohon ditunggu. Laporan Anda sedang dianalisis oleh IT Helpdesk...", false);
+      
       try {
         const response = await invoke('send_chat_message', { message: text });
-        addMessage(response, false);
+        loadingBubble.innerHTML = response.replace(/\n/g, '<br>');
       } catch (e) {
-        addMessage("❌ Gagal terhubung ke server. " + e, false);
+        loadingBubble.innerHTML = "❌ Gagal terhubung ke server. " + e;
       }
     }
 
