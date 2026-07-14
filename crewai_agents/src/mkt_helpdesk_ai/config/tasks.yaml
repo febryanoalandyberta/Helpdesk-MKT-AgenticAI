@@ -46,11 +46,13 @@ triage_task:
     3. "root_cause": Your brief root cause deduction in Indonesian.
     
     Example output format:
+    ```json
     {
-      "analysis": "Halo Kak {reporter_name}, mohon maaf atas kendala yang dialami. Berdasarkan laporan, sepertinya ada masalah pada koneksi printer.",
+      "analysis": "Halo Kak [Nama Pelapor], mohon maaf atas kendala yang dialami. Berdasarkan laporan, sepertinya ada masalah pada koneksi printer.",
       "recommendation": "Silakan periksa kembali kabel printer apakah sudah tersambung dengan benar. Jika masih bermasalah, cobalah restart PC kasir.",
       "root_cause": "Koneksi kabel printer longgar atau driver error"
     }
+    ```
   agent: tier0_triage_agent
 
 technical_diagnosis_task:

@@ -70,9 +70,7 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
         
         # Refresh tiket dari DB untuk mendapatkan hasil yang sudah disimpan
         await db.refresh(ticket)
-        if ticket.ai_analysis and ticket.ai_recommendation:
-            ai_response = f"{ticket.ai_analysis}\n\n{ticket.ai_recommendation}"
-        elif ticket.ai_recommendation:
+        if ticket.ai_recommendation:
             ai_response = ticket.ai_recommendation
         else:
             ai_response = "Laporan berhasil diteruskan ke AI dan Zammad. Menunggu pengecekan tim teknis."
