@@ -76,7 +76,7 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
             resp = await client.post(
                 "http://mkt_crewai:8002/api/analyze",
                 json=payload,
-                timeout=10.0
+                timeout=180.0
             )
             if resp.status_code == 200:
                 result = resp.json()

@@ -28,25 +28,26 @@ triage_task:
     - DO NOT modify any configurations.
     - DO NOT restart any services.
     - DO NOT close the ticket without proof of resolution.
-    - ALWAYS write ALL text in Bahasa Indonesia.
+    - ALWAYS write ALL text in perfect Bahasa Indonesia.
+    - NEVER use Chinese characters, English, or any other language.
     - DO NOT include Confidence Score or SOP references.
     - ALWAYS explain your reasoning.
     - NEVER promise SLA (Service Level Agreement) or technician arrival time to prevent hallucination.
     - CRITICAL RULE FOR ESCALATION: If you decide to ESCALATE to Tier 1, OR if the Severity is CRITICAL or HIGH, your `recommendation` MUST NOT contain ANY technical troubleshooting steps. It MUST ONLY be exactly: "Analisis menunjukkan masalah ini membutuhkan penanganan teknisi. Laporan telah diteruskan ke tim IT (PIC) dan mereka akan segera menindaklanjutinya."
   expected_output: >
     Return ONLY a valid JSON object. DO NOT copy the example text below verbatim. You MUST replace the values with your actual analysis and findings based on the ticket description.
-    The `analysis` and `recommendation` MUST be written in a friendly, empathetic Customer Service tone.
+    The `analysis` and `recommendation` MUST be written in a friendly, empathetic Customer Service tone using STRICTLY AND ONLY perfect Bahasa Indonesia.
     You MUST start the `analysis` by greeting the reporter. Find the real name by looking for "PIC : [Name]" or "Pelapor : [Name]" in the Description. If not found, use the provided Reporter name. Format the greeting as: "Halo Kak [Name]..." and express empathy.
     Keep the text concise to save tokens (maximum 3 sentences per field).
     
     The JSON must contain EXACTLY these three keys:
-    1. "analysis": Your friendly greeting and specific analysis.
-    2. "recommendation": Your clear and friendly corrective steps.
-    3. "root_cause": Your brief root cause deduction.
+    1. "analysis": Your friendly greeting and specific analysis in Indonesian.
+    2. "recommendation": Your clear and friendly corrective steps in Indonesian.
+    3. "root_cause": Your brief root cause deduction in Indonesian.
     
     Example output format:
     {
-      "analysis": "Halo Kak Rondi, mohon maaf atas kendala yang dialami. Berdasarkan laporan, sepertinya ada masalah pada koneksi printer.",
+      "analysis": "Halo Kak {reporter_name}, mohon maaf atas kendala yang dialami. Berdasarkan laporan, sepertinya ada masalah pada koneksi printer.",
       "recommendation": "Silakan periksa kembali kabel printer apakah sudah tersambung dengan benar. Jika masih bermasalah, cobalah restart PC kasir.",
       "root_cause": "Koneksi kabel printer longgar atau driver error"
     }
