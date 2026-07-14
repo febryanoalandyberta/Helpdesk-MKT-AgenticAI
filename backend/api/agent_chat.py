@@ -64,23 +64,18 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
     # 4. Trigger AI (CrewAI)
     ai_response = "Sistem AI sedang memproses laporan Anda..."
     try:
-        payload = {
-            "ticket_id": ticket.zammad_ticket_id if ticket.zammad_ticket_id else str(ticket.ticket_id),
-            "title": ticket.title,
-            "description": description,
-            "reporter_name": data.sender,
-            "site_name": site_name,
-            "severity": "MEDIUM"
-        }
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                "http://mkt_crewai:8002/api/analyze",
-                json=payload,
-                timeout=180.0
-            )
-            if resp.status_code == 200:
-                result = resp.json()
-                ai_response = result.get("result", "Laporan berhasil diteruskan ke AI dan Zammad.")
+        from api.tickets import process_ticket_ai
+        # Panggil process_ticket_ai secara synchronous (await) agar DB, Zammad, dan Telegram terupdate
+        await process_ticket_ai(str(ticket.ticket_id))
+        
+        # Refresh tiket dari DB untuk mendapatkan hasil yang sudah disimpan
+        await db.refresh(ticket)
+        if ticket.ai_analysis and ticket.ai_recommendation:
+            ai_response = f"{ticket.ai_analysis}\n\n{ticket.ai_recommendation}"
+        elif ticket.ai_recommendation:
+            ai_response = ticket.ai_recommendation
+        else:
+            ai_response = "Laporan berhasil diteruskan ke AI dan Zammad. Menunggu pengecekan tim teknis."
     except Exception as e:
         print(f"[Agent Chat] Failed to contact CrewAI: {e}")
         ai_response = "Mohon ditunggu . Laporan Anda telah dicatat dan akan segera ditangani oleh tim IT Helpdesk"
