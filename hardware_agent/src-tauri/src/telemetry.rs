@@ -52,8 +52,11 @@ fn save_device_id(device_id: &str) {
 }
 
 fn get_local_ip() -> String {
-    // Basic implementation - in production use a better crate to find active local IP
-    "127.0.0.1".to_string()
+    if let Ok(ip) = local_ip_address::local_ip() {
+        ip.to_string()
+    } else {
+        "127.0.0.1".to_string()
+    }
 }
 
 async fn auto_register() -> Option<String> {
@@ -71,12 +74,14 @@ async fn auto_register() -> Option<String> {
         _ => "UnknownPC".to_string(),
     };
     
+    let os_version = System::os_version().unwrap_or_else(|| "Unknown".to_string());
+    
     let payload = AutoRegisterRequest {
         mac_address: mac,
         hostname: hostname_str,
         ip_address: get_local_ip(),
-        operating_system: std::env::consts::OS.to_string(),
-        os_version: "Unknown".to_string(),
+        operating_system: System::name().unwrap_or_else(|| std::env::consts::OS.to_string()),
+        os_version: os_version,
     };
 
     let client = reqwest::Client::new();

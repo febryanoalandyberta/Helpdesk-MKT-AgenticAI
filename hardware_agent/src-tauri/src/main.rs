@@ -27,6 +27,15 @@ fn main() {
                 match id.as_str() {
                     "open_chat" => {
                         let window = app.get_window("main").unwrap();
+                        
+                        if let Ok(Some(monitor)) = window.primary_monitor() {
+                            let size = monitor.size();
+                            let win_size = window.outer_size().unwrap_or(tauri::PhysicalSize::new(400, 600));
+                            let x = size.width.saturating_sub(win_size.width + 20);
+                            let y = size.height.saturating_sub(win_size.height + 60);
+                            let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+                        }
+                        
                         window.show().unwrap();
                         window.set_focus().unwrap();
                     }
@@ -38,6 +47,13 @@ fn main() {
             }
             SystemTrayEvent::DoubleClick { .. } => {
                 let window = app.get_window("main").unwrap();
+                if let Ok(Some(monitor)) = window.primary_monitor() {
+                    let size = monitor.size();
+                    let win_size = window.outer_size().unwrap_or(tauri::PhysicalSize::new(400, 600));
+                    let x = size.width.saturating_sub(win_size.width + 20);
+                    let y = size.height.saturating_sub(win_size.height + 60);
+                    let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+                }
                 window.show().unwrap();
                 window.set_focus().unwrap();
             }

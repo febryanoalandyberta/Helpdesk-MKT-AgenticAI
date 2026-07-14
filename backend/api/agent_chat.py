@@ -54,14 +54,14 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
         payload = {
             "ticket_id": str(ticket.ticket_id),
             "title": ticket.title,
-            "customer": data.sender,
             "description": description,
-            "created_at": datetime.utcnow().isoformat(),
-            "zammad_status": "new"
+            "reporter_name": data.sender,
+            "site_name": site_name,
+            "severity": "MEDIUM"
         }
         async with httpx.AsyncClient() as client:
             resp = await client.post(
-                "http://host.docker.internal:8001/api/analyze",
+                "http://mkt_crewai:8002/api/analyze",
                 json=payload,
                 timeout=10.0
             )
