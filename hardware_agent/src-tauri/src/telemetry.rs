@@ -25,6 +25,8 @@ struct TelemetryRequest {
     temperature: f32,
     current_active_app: Option<String>,
     current_active_url: Option<String>,
+    operating_system: Option<String>,
+    os_version: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -76,7 +78,7 @@ async fn auto_register() -> Option<String> {
     
     let mut sys = System::new_all();
     sys.refresh_all();
-    let os_version = sys.os_version().unwrap_or_else(|| "Unknown".to_string());
+    let os_version = sys.long_os_version().unwrap_or_else(|| sys.os_version().unwrap_or_else(|| "Unknown".to_string()));
     
     let payload = AutoRegisterRequest {
         mac_address: mac,
@@ -140,6 +142,8 @@ pub async fn start_telemetry_loop(_app: AppHandle) {
             temperature: 45.0, // Mock temperature for now
             current_active_app: app_name.or_else(|| Some("Unknown".to_string())),
             current_active_url: app_title,
+            operating_system: Some(sys.name().unwrap_or_else(|| std::env::consts::OS.to_string())),
+            os_version: Some(sys.long_os_version().unwrap_or_else(|| sys.os_version().unwrap_or_else(|| "Unknown".to_string()))),
         };
         
         let url = format!("{}/devices/{}/telemetry", API_BASE, device_id);

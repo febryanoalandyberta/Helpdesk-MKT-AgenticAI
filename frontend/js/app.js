@@ -517,7 +517,7 @@ async function loadDevices() {
       </td>
       <td><span class="badge badge-medium">${d.device_type}</span></td>
       <td><code style="color:#22d3a0">${d.ip_address || '—'}</code></td>
-      <td style="color:#8892b0">${d.operating_system || '—'}</td>
+      <td style="color:#8892b0">${d.operating_system || '—'} ${d.os_version || ''}</td>
       <td>
         <div style="font-size:11px; margin-bottom:4px">CPU: <strong>${d.cpu_usage ? d.cpu_usage.toFixed(1) + '%' : '—'}</strong></div>
         <div style="font-size:11px; margin-bottom:4px">RAM: <strong>${d.ram_usage ? d.ram_usage.toFixed(1) + '%' : '—'}</strong></div>

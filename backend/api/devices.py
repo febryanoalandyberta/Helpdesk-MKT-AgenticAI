@@ -30,6 +30,8 @@ class TelemetryRequest(BaseModel):
     temperature: float
     current_active_app: Optional[str] = None
     current_active_url: Optional[str] = None
+    operating_system: Optional[str] = None
+    os_version: Optional[str] = None
 
 
 class CreateDeviceRequest(BaseModel):
@@ -89,6 +91,10 @@ async def auto_register_device(data: AutoRegisterRequest, db: AsyncSession = Dep
         # Update existing device info
         device.ip_address = data.ip_address
         device.hostname = data.hostname
+        if data.operating_system:
+            device.operating_system = data.operating_system
+        if data.os_version:
+            device.os_version = data.os_version
         device.last_seen = datetime.utcnow()
         device.status = DeviceStatus.ONLINE
         await db.commit()
@@ -138,6 +144,11 @@ async def receive_telemetry(
     # Update IP if changed (Failover tracking)
     if device.ip_address != data.ip_address:
         device.ip_address = data.ip_address
+
+    if data.operating_system:
+        device.operating_system = data.operating_system
+    if data.os_version:
+        device.os_version = data.os_version
 
     device.status = DeviceStatus.ONLINE
     device.last_seen = datetime.utcnow()
