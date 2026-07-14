@@ -74,13 +74,15 @@ async fn auto_register() -> Option<String> {
         _ => "UnknownPC".to_string(),
     };
     
-    let os_version = System::os_version().unwrap_or_else(|| "Unknown".to_string());
+    let mut sys = System::new_all();
+    sys.refresh_all();
+    let os_version = sys.os_version().unwrap_or_else(|| "Unknown".to_string());
     
     let payload = AutoRegisterRequest {
         mac_address: mac,
         hostname: hostname_str,
         ip_address: get_local_ip(),
-        operating_system: System::name().unwrap_or_else(|| std::env::consts::OS.to_string()),
+        operating_system: sys.name().unwrap_or_else(|| std::env::consts::OS.to_string()),
         os_version: os_version,
     };
 
