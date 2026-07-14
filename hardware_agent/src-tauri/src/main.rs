@@ -80,7 +80,7 @@ async fn send_chat_message(message: String) -> Result<String, String> {
         "sender": "POS User"
     });
     
-    match client.post("http://localhost:8000/api/chat/incoming")
+    match client.post("http://10.20.0.193:8000/api/chat/incoming")
         .json(&payload)
         .send()
         .await {

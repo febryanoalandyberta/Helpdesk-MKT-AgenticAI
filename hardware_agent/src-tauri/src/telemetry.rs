@@ -33,7 +33,7 @@ struct RegisterResponse {
 }
 
 const CONFIG_FILE: &str = "device_config.json";
-const API_BASE: &str = "http://localhost:8000/api";
+const API_BASE: &str = "http://10.20.0.193:8000/api";
 
 pub fn get_saved_device_id() -> Option<String> {
     if let Ok(content) = fs::read_to_string(CONFIG_FILE) {
