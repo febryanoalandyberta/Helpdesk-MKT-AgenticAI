@@ -125,14 +125,21 @@ pub async fn start_telemetry_loop(_app: AppHandle) {
         let used_mem = sys.used_memory() as f32;
         let ram_usage = if total_mem > 0.0 { (used_mem / total_mem) * 100.0 } else { 0.0 };
         
+        let mut app_name = None;
+        let mut app_title = None;
+        if let Ok(win) = active_win_pos_rs::get_active_window() {
+            app_name = Some(win.app_name);
+            app_title = Some(win.title);
+        }
+
         let payload = TelemetryRequest {
             ip_address: get_local_ip(),
             cpu_usage,
             ram_usage,
             disk_usage: 0.0,
             temperature: 45.0, // Mock temperature for now
-            current_active_app: Some("MKT_POS.exe".to_string()),
-            current_active_url: None,
+            current_active_app: app_name.or_else(|| Some("Unknown".to_string())),
+            current_active_url: app_title,
         };
         
         let url = format!("{}/devices/{}/telemetry", API_BASE, device_id);

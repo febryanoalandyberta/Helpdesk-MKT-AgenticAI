@@ -48,11 +48,24 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
     await db.commit()
     await db.refresh(ticket)
     
+    # Create ticket in Zammad
+    from api.zammad_webhook import zammad_client
+    customer_email = "febryanoit@megakreasitech.com" # Default fallback
+    zammad_id = await zammad_client.create_ticket(
+        title=ticket.title,
+        body=ticket.description,
+        customer=customer_email
+    )
+    if zammad_id:
+        ticket.zammad_ticket_id = str(zammad_id)
+        db.add(ticket)
+        await db.commit()
+
     # 4. Trigger AI (CrewAI)
     ai_response = "Sistem AI sedang memproses laporan Anda..."
     try:
         payload = {
-            "ticket_id": str(ticket.ticket_id),
+            "ticket_id": ticket.zammad_ticket_id if ticket.zammad_ticket_id else str(ticket.ticket_id),
             "title": ticket.title,
             "description": description,
             "reporter_name": data.sender,
@@ -67,10 +80,10 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
             )
             if resp.status_code == 200:
                 result = resp.json()
-                ai_response = result.get("agent_response", "Laporan berhasil diteruskan ke AI dan Zammad.")
+                ai_response = result.get("result", "Laporan berhasil diteruskan ke AI dan Zammad.")
     except Exception as e:
         print(f"[Agent Chat] Failed to contact CrewAI: {e}")
-        ai_response = "Maaf, AI Helpdesk sedang sibuk. Laporan Anda telah dicatat dan akan segera ditangani oleh tim IT."
+        ai_response = "Mohon ditunggu . Laporan Anda telah dicatat dan akan segera ditangani oleh tim IT Helpdesk"
 
     return {
         "status": "success",
