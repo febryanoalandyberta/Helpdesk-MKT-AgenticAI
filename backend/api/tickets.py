@@ -227,7 +227,7 @@ async def process_ticket_ai(ticket_id: str):
             ai_success = False
             async with httpx.AsyncClient(timeout=120) as client:
                 try:
-                    resp = await client.post("http://crewai:8002/api/analyze", json=payload)
+                    resp = await client.post("http://mkt_crewai:8002/api/analyze", json=payload)
                     resp.raise_for_status()
                     data = resp.json()
                     
