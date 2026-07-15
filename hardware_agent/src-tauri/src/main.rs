@@ -9,6 +9,7 @@ use std::thread;
 use std::time::Duration;
 
 mod telemetry;
+mod hardware_monitor;
 
 fn main() {
     let open_chat = CustomMenuItem::new("open_chat".to_string(), "Buka Chat Helpdesk");
@@ -69,10 +70,15 @@ fn main() {
         })
         .setup(|app| {
             let handle = app.handle();
+            let handle2 = app.handle();
             
             // Start background telemetry task
             tauri::async_runtime::spawn(async move {
                 telemetry::start_telemetry_loop(handle).await;
+            });
+            
+            tauri::async_runtime::spawn(async move {
+                hardware_monitor::start_hardware_monitor(handle2).await;
             });
             
             Ok(())
