@@ -524,6 +524,24 @@
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: LIVE CHAT ═══════════════ -->
+<div class="modal modal-wide" id="liveChatModal" style="display:none; flex-direction:column; max-height:80vh;">
+  <div class="modal-header">
+    <h3 id="liveChatTitle">💬 Live Chat Helpdesk</h3>
+    <div>
+      <button class="btn-ghost btn-sm" onclick="downloadChatPdf()">📥 Download PDF</button>
+      <button class="modal-close" onclick="closeLiveChatModal()">✕</button>
+    </div>
+  </div>
+  <div class="modal-body" id="liveChatBody" style="flex:1; overflow-y:auto; background:#0b1120; padding:15px; display:flex; flex-direction:column; gap:10px;">
+    <!-- Chat messages will be injected here -->
+  </div>
+  <div class="modal-footer" style="display:flex; gap:10px; padding:15px; background:var(--bg-card);">
+    <input type="text" id="liveChatInput" style="flex:1; padding:10px; border-radius:6px; background:#1e293b; color:#fff; border:1px solid #334155;" placeholder="Ketik pesan balasan... (Enter untuk kirim)" onkeypress="if(event.key === 'Enter') sendLiveChatMessage()"/>
+    <button class="btn-primary" onclick="sendLiveChatMessage()">Kirim</button>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: ADD USER ═══════════════ -->
 <div class="modal" id="addUserModal">
   <div class="modal-header">

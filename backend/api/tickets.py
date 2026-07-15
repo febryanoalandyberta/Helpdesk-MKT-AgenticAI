@@ -353,3 +353,27 @@ async def process_ticket_ai(ticket_id: str):
 
         except Exception as e:
             logger.error(f"[TicketsAPI] AI processing error for {ticket_id}: {e}")
+
+@router.post("/{ticket_id}/escalate")
+async def escalate_ticket_live_chat(ticket_id: str, db: AsyncSession = Depends(get_db)):
+    """Sets live_chat_requested to True and escalates the ticket."""
+    q = await db.execute(select(Ticket).where(Ticket.ticket_id == ticket_id))
+    ticket = q.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    ticket.live_chat_requested = True
+    ticket.status = TicketStatus.ESCALATED
+    ticket.escalated = True
+    ticket.escalated_at = datetime.utcnow()
+    
+    db.add(AuditLog(
+        ticket_id=ticket_id,
+        actor="POS User",
+        action="LIVE_CHAT_REQUESTED",
+        result="SUCCESS",
+        detail="Kasir meminta eskalasi Live Chat.",
+    ))
+    
+    await db.commit()
+    return {"message": "Live Chat Escalation successful."}

@@ -1,13 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 import httpx
+import os
+import shutil
+import uuid
+import tempfile
+from pathlib import Path
+from fpdf import FPDF
+
 from database import get_db
 from models.device import Device
-from models.ticket import Ticket, TicketStatus
+from models.ticket import Ticket, TicketStatus, ChatMessage, ChatSender
+
+UPLOAD_DIR = Path("uploads")
+if not UPLOAD_DIR.exists():
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+try:
+    from PIL import Image
+    HAS_PILLOW = True
+except ImportError:
+    HAS_PILLOW = False
+
 
 router = APIRouter(prefix="/api/chat", tags=["Agent Chat"])
 
@@ -83,3 +102,147 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
         "ticket_id": str(ticket.ticket_id),
         "reply": ai_response
     }
+
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: dict[str, list[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, ticket_id: str):
+        await websocket.accept()
+        if ticket_id not in self.active_connections:
+            self.active_connections[ticket_id] = []
+        self.active_connections[ticket_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, ticket_id: str):
+        if ticket_id in self.active_connections:
+            self.active_connections[ticket_id].remove(websocket)
+            if not self.active_connections[ticket_id]:
+                del self.active_connections[ticket_id]
+
+    async def broadcast(self, ticket_id: str, message: dict):
+        if ticket_id in self.active_connections:
+            for connection in self.active_connections[ticket_id]:
+                await connection.send_json(message)
+
+manager = ConnectionManager()
+
+@router.websocket("/ws/{ticket_id}")
+async def websocket_endpoint(websocket: WebSocket, ticket_id: str, db: AsyncSession = Depends(get_db)):
+    await manager.connect(websocket, ticket_id)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            # data format: {"sender": "USER|AGENT", "message_type": "TEXT|FILE", "content": "hello"}
+            
+            sender_enum = ChatSender.USER
+            if data.get("sender") == "AGENT":
+                sender_enum = ChatSender.AGENT
+                
+            msg = ChatMessage(
+                ticket_id=ticket_id,
+                sender=sender_enum,
+                message_type=data.get("message_type", "TEXT"),
+                content=data.get("content", "")
+            )
+            db.add(msg)
+            await db.commit()
+            
+            # Add timestamp to broadcast
+            broadcast_data = {
+                "sender": data.get("sender", "USER"),
+                "message_type": data.get("message_type", "TEXT"),
+                "content": data.get("content", ""),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            await manager.broadcast(ticket_id, broadcast_data)
+            
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, ticket_id)
+
+@router.post("/upload")
+async def upload_chat_file(ticket_id: str, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    """Uploads a file, compresses images if possible, and saves locally."""
+    # Check if ticket exists
+    q = await db.execute(select(Ticket).where(Ticket.ticket_id == ticket_id))
+    ticket = q.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    file_extension = os.path.splitext(file.filename)[1].lower()
+    new_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = UPLOAD_DIR / new_filename
+
+    if file_extension in ['.jpg', '.jpeg', '.png'] and HAS_PILLOW:
+        try:
+            image = Image.open(file.file)
+            if image.mode in ("RGBA", "P"):
+                image = image.convert("RGB")
+            
+            max_width = 1200
+            if image.width > max_width:
+                w_percent = max_width / float(image.width)
+                h_size = int((float(image.height) * float(w_percent)))
+                image = image.resize((max_width, h_size), Image.Resampling.LANCZOS)
+                
+            image.save(file_path, optimize=True, quality=60)
+        except Exception:
+            with open(file_path, "wb") as buffer:
+                file.file.seek(0)
+                shutil.copyfileobj(file.file, buffer)
+    else:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+    return {"filename": new_filename, "url": f"/uploads/{new_filename}"}
+
+@router.get("/export-pdf/{ticket_id}")
+async def export_chat_pdf(ticket_id: str, db: AsyncSession = Depends(get_db)):
+    """Generate and return a read-only PDF of the chat history."""
+    q = await db.execute(select(Ticket).where(Ticket.ticket_id == ticket_id))
+    ticket = q.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    q_msg = await db.execute(select(ChatMessage).where(ChatMessage.ticket_id == ticket_id).order_by(ChatMessage.timestamp))
+    messages = q_msg.scalars().all()
+
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Check if a custom font exists (useful for emojis/unicode), else fallback to helvetica
+    pdf.set_font("helvetica", "B", 16)
+    pdf.cell(0, 10, "MKT IT Helpdesk - Bukti Percakapan Live Chat", new_x="LMARGIN", new_y="NEXT", align="C")
+    
+    pdf.set_font("helvetica", "", 12)
+    pdf.cell(0, 8, f"Ticket ID: {ticket.ticket_id}", new_x="LMARGIN", new_y="NEXT")
+    # Clean up non-latin1 characters for basic helvetica font
+    clean_title = ticket.title.encode('latin-1', 'replace').decode('latin-1') if ticket.title else ""
+    pdf.cell(0, 8, f"Judul Tiket: {clean_title}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 8, f"Tanggal Export: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(10)
+
+    for msg in messages:
+        sender_label = "IT Helpdesk" if msg.sender.name == "AGENT" else "Kasir (POS User)"
+        time_str = msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        
+        pdf.set_font("helvetica", "B", 10)
+        pdf.cell(0, 6, f"[{time_str}] {sender_label}:", new_x="LMARGIN", new_y="NEXT")
+        
+        pdf.set_font("helvetica", "", 10)
+        content = msg.content
+        if msg.message_type == 'FILE':
+            content = f"[FILE ATTACHMENT: {msg.content}]"
+            
+        clean_content = content.encode('latin-1', 'replace').decode('latin-1')
+        pdf.multi_cell(0, 5, clean_content)
+        pdf.ln(3)
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    pdf.output(temp_file.name)
+    
+    return FileResponse(
+        path=temp_file.name, 
+        filename=f"Chat_Evidence_{ticket.ticket_id}.pdf", 
+        media_type="application/pdf"
+    )

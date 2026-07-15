@@ -385,6 +385,7 @@ async function loadTickets() {
       <td style="color:#8892b0;font-size:11px">${timeAgo(t.created_at)}</td>
       <td>
         <button class="btn-info" onclick="event.stopPropagation();triggerAIForTicket('${t.ticket_id}')">🤖 AI</button>
+        ${t.live_chat_requested ? `<button class="btn-primary" style="background:#ef4444; border:none; margin-left:4px" onclick="event.stopPropagation();openLiveChat('${t.ticket_id}')">💬 Chat</button>` : ''}
       </td>
     </tr>`).join('');
 }
@@ -769,6 +770,9 @@ async function openTicketDetail(ticketId) {
     ${t.resolution ? `<div class="detail-section">
       <h4>Resolusi</h4>
       <div class="detail-text" style="border-left:3px solid #6388ff">${t.resolution}</div>
+    </div>` : ''}
+    ${t.live_chat_requested ? `<div class="detail-section" style="margin-top:15px">
+      <button class="btn-primary" style="width:100%; background:#ef4444; border:none; padding:12px; font-size:14px;" onclick="openLiveChat('${t.ticket_id}')">💬 Buka Live Chat</button>
     </div>` : ''}`;
 
   document.getElementById('modalOverlay').classList.add('show');
@@ -1224,4 +1228,103 @@ async function deleteUser(userId, username) {
   } else {
     showToast('Gagal menghapus user', 'error');
   }
+}
+
+// ─── LIVE CHAT WEBSOCKET (DASHBOARD) ─────────
+let liveChatWs = null;
+let currentChatTicketId = null;
+
+function openLiveChat(ticketId) {
+  currentChatTicketId = ticketId;
+  document.getElementById('ticketDetailModal').classList.remove('show');
+  document.getElementById('liveChatModal').style.display = 'flex';
+  
+  const chatBody = document.getElementById('liveChatBody');
+  chatBody.innerHTML = '<div class="loading-state">Menghubungkan ke ruangan chat...</div>';
+  
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${wsProtocol}//${window.location.host}/api/chat/ws/${ticketId}`;
+  
+  if (liveChatWs) liveChatWs.close();
+  liveChatWs = new WebSocket(wsUrl);
+  
+  liveChatWs.onopen = () => {
+    chatBody.innerHTML = '<div style="text-align:center; color:#22d3a0; font-size:12px; margin-bottom:10px;">✅ Terhubung ke Kasir</div>';
+  };
+  
+  liveChatWs.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    appendChatMessage(data);
+  };
+  
+  liveChatWs.onerror = (error) => {
+    chatBody.innerHTML += '<div style="text-align:center; color:#ef4444; font-size:12px;">❌ Koneksi terputus.</div>';
+  };
+  
+  liveChatWs.onclose = () => {
+    chatBody.innerHTML += '<div style="text-align:center; color:#8892b0; font-size:12px;">Chat ditutup.</div>';
+  };
+}
+
+function closeLiveChatModal() {
+  document.getElementById('liveChatModal').style.display = 'none';
+  document.getElementById('modalOverlay').classList.remove('show');
+  if (liveChatWs) {
+    liveChatWs.close();
+    liveChatWs = null;
+  }
+  currentChatTicketId = null;
+}
+
+function appendChatMessage(data) {
+  const chatBody = document.getElementById('liveChatBody');
+  const isAgent = data.sender === 'AGENT';
+  
+  const div = document.createElement('div');
+  div.style.padding = '10px 15px';
+  div.style.borderRadius = '8px';
+  div.style.maxWidth = '80%';
+  div.style.wordWrap = 'break-word';
+  div.style.alignSelf = isAgent ? 'flex-end' : 'flex-start';
+  div.style.background = isAgent ? '#38bdf8' : '#1e293b';
+  div.style.color = isAgent ? '#000' : '#fff';
+  div.style.border = isAgent ? 'none' : '1px solid #334155';
+  
+  const senderLabel = isAgent ? 'Anda (IT Helpdesk)' : 'Kasir';
+  const timeLabel = new Date(data.timestamp || Date.now()).toLocaleTimeString('id-ID');
+  
+  let contentHtml = data.content.replace(/\n/g, '<br>');
+  if (data.message_type === 'FILE' && data.content.startsWith('/uploads/')) {
+    contentHtml = `<a href="${data.content}" target="_blank"><img src="${data.content}" style="max-width:200px; border-radius:4px; margin-top:5px;"/></a>`;
+  }
+  
+  div.innerHTML = `
+    <div style="font-size:10px; opacity:0.7; margin-bottom:4px; display:flex; justify-content:space-between; gap:10px;">
+      <b>${senderLabel}</b> <span>${timeLabel}</span>
+    </div>
+    <div style="font-size:14px; line-height:1.4;">${contentHtml}</div>
+  `;
+  
+  chatBody.appendChild(div);
+  chatBody.scrollTop = chatBody.scrollHeight;
+}
+
+function sendLiveChatMessage() {
+  const input = document.getElementById('liveChatInput');
+  const text = input.value.trim();
+  if (!text || !liveChatWs || liveChatWs.readyState !== WebSocket.OPEN) return;
+  
+  const msg = {
+    sender: 'AGENT',
+    message_type: 'TEXT',
+    content: text
+  };
+  liveChatWs.send(JSON.stringify(msg));
+  input.value = '';
+}
+
+function downloadChatPdf() {
+  if (!currentChatTicketId) return;
+  showToast('Mempersiapkan PDF...', 'info');
+  window.open(`${API}/api/chat/export-pdf/${currentChatTicketId}`, '_blank');
 }

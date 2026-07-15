@@ -166,7 +166,14 @@ pub async fn start_telemetry_loop(_app: AppHandle) {
         };
         
         let url = format!("{}/devices/{}/telemetry", API_BASE, device_id);
-        let _ = client.post(&url).json(&payload).send().await;
+        if let Ok(res) = client.post(&url).json(&payload).send().await {
+            if res.status() == 404 {
+                // Backend tidak mengenali ID ini (kemungkinan database di-reset).
+                // Hapus file konfigurasi lama agar otomatis register ulang di cycle berikutnya.
+                let _ = fs::remove_file(CONFIG_FILE);
+                std::process::exit(0);
+            }
+        }
         
         tokio::time::sleep(Duration::from_secs(15)).await;
     }

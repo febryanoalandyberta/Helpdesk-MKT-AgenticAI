@@ -38,6 +38,38 @@ class TicketCategory(str, PyEnum):
     OTHER = "OTHER"
 
 
+class ChatSender(str, PyEnum):
+    USER = "USER"
+    AI = "AI"
+    AGENT = "AGENT"
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    message_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ticket_id = Column(UUID(as_uuid=True), ForeignKey("tickets.ticket_id"), nullable=False)
+    
+    sender = Column(Enum(ChatSender), nullable=False)
+    message_type = Column(String(50), default="TEXT") # TEXT or FILE
+    content = Column(Text, nullable=False)
+    
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    ticket = relationship("Ticket", back_populates="chat_messages")
+    
+    def to_dict(self):
+        return {
+            "message_id": str(self.message_id),
+            "ticket_id": str(self.ticket_id),
+            "sender": self.sender,
+            "message_type": self.message_type,
+            "content": self.content,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+        }
+
+
 class Ticket(Base):
     __tablename__ = "tickets"
 
@@ -81,6 +113,9 @@ class Ticket(Base):
     sla_deadline = Column(DateTime, nullable=True)
     sla_breached = Column(Boolean, default=False)
 
+    # Live Chat
+    live_chat_requested = Column(Boolean, default=False)
+
     # Metadata
     raw_data = Column(JSON, nullable=True)
     telegram_message_id = Column(String(100), nullable=True)
@@ -92,6 +127,7 @@ class Ticket(Base):
     # Relationships
     site = relationship("Site", back_populates="tickets")
     device = relationship("Device", back_populates="tickets")
+    chat_messages = relationship("ChatMessage", back_populates="ticket", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Ticket {self.zammad_ticket_id} [{self.severity}] {self.status}>"
@@ -123,6 +159,7 @@ class Ticket(Base):
             "resolved_by": self.resolved_by,
             "sla_deadline": self.sla_deadline.isoformat() if self.sla_deadline else None,
             "sla_breached": self.sla_breached,
+            "live_chat_requested": self.live_chat_requested,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

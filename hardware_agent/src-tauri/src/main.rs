@@ -88,9 +88,14 @@ fn main() {
         .expect("error while running tauri application");
 }
 
+#[derive(serde::Serialize)]
+pub struct ChatResponse {
+    reply: String,
+    ticket_id: String,
+}
+
 #[tauri::command]
-async fn send_chat_message(message: String) -> Result<String, String> {
-    // Here we will call the FastAPI endpoint /api/chat/incoming
+async fn send_chat_message(message: String) -> Result<ChatResponse, String> {
     let client = reqwest::Client::new();
     let device_id = telemetry::get_saved_device_id().unwrap_or_else(|| "UNKNOWN".to_string());
     
@@ -107,7 +112,9 @@ async fn send_chat_message(message: String) -> Result<String, String> {
             Ok(res) => {
                 if res.status().is_success() {
                     if let Ok(json) = res.json::<serde_json::Value>().await {
-                        return Ok(json["reply"].as_str().unwrap_or("Pesan terkirim.").to_string());
+                        let reply = json["reply"].as_str().unwrap_or("Pesan terkirim.").to_string();
+                        let ticket_id = json["ticket_id"].as_str().unwrap_or("").to_string();
+                        return Ok(ChatResponse { reply, ticket_id });
                     }
                 }
                 Err("Gagal menghubungi server.".to_string())
