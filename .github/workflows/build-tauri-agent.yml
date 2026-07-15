@@ -37,4 +37,4 @@ jobs:
         with:
           compression-level: 0
           name: MKT_Hardware_Agent_Installer
-          path: hardware_agent/src-tauri/target/release/bundle/nsis/*.exe
+          path: hardware_agent/src-tauri/target/**/bundle/nsis/*.exe
