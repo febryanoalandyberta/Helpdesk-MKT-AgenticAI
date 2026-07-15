@@ -55,11 +55,10 @@ class ZammadClient:
                     f"{self.base_url}/api/v1/tickets/search",
                     headers=self.headers,
                     params={
-                        "query": f"id:>{since_id}" if since_id > 0 else "created_at:>2020-01-01",
+                        "query": "created_at:>2024-01-01",
                         "limit": 20,
                         "sort_by": "created_at",
                         "order_by": "desc",
-                        "expand": "true"
                     },
                 )
                 resp.raise_for_status()
@@ -272,32 +271,35 @@ async def poll_zammad_for_new_tickets():
     """
     Step 2: Sistem mengambil tiket baru dari Zammad.
     Berjalan sebagai background task setiap ZAMMAD_POLL_INTERVAL detik.
+    Bypass Elasticsearch/Zammad Search bug dengan Sequential Probing ID.
     """
     global _last_polled_id
     logger.info(f"[Zammad Polling] Checking for new tickets (last_id={_last_polled_id})")
 
     try:
-        new_tickets = await zammad_client.get_new_tickets(since_id=_last_polled_id)
-
-        if not new_tickets:
-            logger.debug("[Zammad Polling] No new tickets found.")
-            return
-
         from database import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
-            for item in new_tickets:
-                if isinstance(item, int) or (isinstance(item, str) and item.isdigit()):
-                    # Search returned just an ID, fetch the full ticket object
-                    zt = await zammad_client.get_ticket_detail(int(item))
-                    if not zt:
-                        continue
-                else:
-                    zt = item
+            if _last_polled_id == 0:
+                q = await db.execute(select(Ticket.zammad_ticket_id).where(Ticket.zammad_ticket_id != None))
+                ids = [int(zid) for zid in q.scalars().all() if zid and zid.isdigit()]
+                _last_polled_id = max(ids) if ids else 0
 
-                zammad_id = str(zt.get("id", ""))
-                if not zammad_id:
+            current_id = _last_polled_id + 1
+            consecutive_not_found = 0
+            processed = 0
+
+            while consecutive_not_found < 5:  # Allow gaps like deleted tickets
+                zt = await zammad_client.get_ticket_detail(current_id)
+                if not zt:
+                    consecutive_not_found += 1
+                    current_id += 1
                     continue
-
+                
+                # Ticket found!
+                consecutive_not_found = 0
+                processed += 1
+                zammad_id = str(zt.get("id", ""))
+                
                 q = await db.execute(select(Ticket).where(Ticket.zammad_ticket_id == zammad_id))
                 existing = q.scalar_one_or_none()
                 if existing:
@@ -309,61 +311,55 @@ async def poll_zammad_for_new_tickets():
                         existing.resolved_at = datetime.utcnow()
                         await db.commit()
                         logger.info(f"[Zammad Polling] Sync: Ticket {existing.ticket_id} closed")
-                    continue
+                else:
+                    description = zt.get("body", "")
+                    if not description:
+                        articles = await zammad_client.get_ticket_articles(int(zammad_id))
+                        if articles and len(articles) > 0:
+                            description = articles[0].get("body", "")
+                    import re
+                    raw_reporter = str(zt.get("customer_id", zt.get("customer", "")))
+                    reporter_name = raw_reporter
+                    if raw_reporter.isdigit() or not raw_reporter:
+                        match = re.search(r'(?i)(?:PIC|Pelapor)\s*:\s*([A-Za-z0-9\s]+)', description)
+                        if match:
+                            reporter_name = match.group(1).strip()
+                        else:
+                            reporter_name = "Pelanggan"
 
-                description = zt.get("body", "")
-                if not description:
-                    # Ambil dari articles jika kosong
-                    articles = await zammad_client.get_ticket_articles(int(zammad_id))
-                    if articles and len(articles) > 0:
-                        description = articles[0].get("body", "")
-                import re
-                raw_reporter = str(zt.get("customer_id", zt.get("customer", "")))
-                reporter_name = raw_reporter
-                if raw_reporter.isdigit() or not raw_reporter:
-                    match = re.search(r'(?i)(?:PIC|Pelapor)\s*:\s*([A-Za-z0-9\s]+)', description)
-                    if match:
-                        reporter_name = match.group(1).strip()
-                    else:
-                        reporter_name = "Pelanggan"
+                    ticket = Ticket(
+                        zammad_ticket_id=zammad_id,
+                        title=zt.get("title", "Untitled"),
+                        description=description,
+                        reporter_name=reporter_name,
+                        severity=parse_zammad_priority(zt),
+                        status=TicketStatus.NEW,
+                    )
+                    db.add(ticket)
+                    db.add(AuditLog(
+                        ticket_id=str(ticket.ticket_id),
+                        actor="ZammadPoller",
+                        action="TICKET_POLLED_FROM_ZAMMAD",
+                        target=f"zammad_ticket_id={zammad_id}",
+                        result="SUCCESS",
+                    ))
+                    await db.commit()
+                    await db.refresh(ticket)
 
-                ticket = Ticket(
-                    zammad_ticket_id=zammad_id,
-                    title=zt.get("title", "Untitled"),
-                    description=description,
-                    reporter_name=reporter_name,
-                    severity=parse_zammad_priority(zt),
-                    status=TicketStatus.NEW,
-                )
-                db.add(ticket)
-                db.add(AuditLog(
-                    actor="ZammadPoller",
-                    action="TICKET_POLLED_FROM_ZAMMAD",
-                    target=f"zammad_ticket_id={zammad_id}",
-                    result="SUCCESS",
-                ))
-                await db.commit()
-                await db.refresh(ticket)
+                    reporter = ticket.reporter_name or "Kak"
+                    greeting = f"Halo {reporter}! 👋\n\nTerima kasih telah menghubungi MKT Helpdesk. Laporan kendala Anda sudah kami terima dengan baik. Saat ini, MKT Agentic AI sedang menganalisis masalah Anda. Mohon tunggu sebentar ya, kami akan segera kembali dengan solusinya! 🛠️😊"
+                    import asyncio
+                    asyncio.create_task(zammad_client.update_ticket(int(zammad_id), greeting))
 
-                # Kirim sapaan awal (Greeting) langsung ke Zammad
-                reporter = ticket.reporter_name or "Kak"
-                greeting = f"Halo {reporter}! 👋\n\nTerima kasih telah menghubungi MKT Helpdesk. Laporan kendala Anda sudah kami terima dengan baik. Saat ini, MKT Agentic AI sedang menganalisis masalah Anda. Mohon tunggu sebentar ya, kami akan segera kembali dengan solusinya! 🛠️😊"
-                import asyncio
-                asyncio.create_task(zammad_client.update_ticket(int(zammad_id), greeting))
+                    await trigger_ai_for_new_ticket(str(ticket.ticket_id))
+                
+                _last_polled_id = current_id
+                current_id += 1
 
-                # Step 3: Trigger CrewAI
-                await trigger_ai_for_new_ticket(str(ticket.ticket_id))
-            
-            # Update _last_polled_id di luar blok (berlaku untuk tiket baru & existing)
-            for item in new_tickets:
-                if isinstance(item, int) or (isinstance(item, str) and item.isdigit()):
-                    _last_polled_id = max(_last_polled_id, int(item))
-                elif isinstance(item, dict):
-                    zid = str(item.get("id", ""))
-                    if zid.isdigit():
-                        _last_polled_id = max(_last_polled_id, int(zid))
-
-        logger.info(f"[Zammad Polling] Processed {len(new_tickets)} tickets. Last ID: {_last_polled_id}")
+        if processed > 0:
+            logger.info(f"[Zammad Polling] Processed {processed} new tickets. Updated Last ID: {_last_polled_id}")
+        else:
+            logger.debug("[Zammad Polling] No new tickets found.")
 
     except Exception as e:
         logger.error(f"[Zammad Polling] Error: {e}")

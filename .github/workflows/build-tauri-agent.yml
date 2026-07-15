@@ -32,10 +32,6 @@ jobs:
         working-directory: ./hardware_agent
         run: npm run tauri build
 
-      - name: Debug Output Path
-        working-directory: ./hardware_agent
-        run: dir src-tauri\target\release\bundle\nsis /s /b || echo "Directory not found!"
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
