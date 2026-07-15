@@ -52,9 +52,15 @@ class ZammadClient:
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.get(
-                    f"{self.base_url}/api/v1/tickets",
+                    f"{self.base_url}/api/v1/tickets/search",
                     headers=self.headers,
-                    params={"limit": 20, "sort_by": "created_at", "order_by": "desc"},
+                    params={
+                        "query": f"id:>{since_id}" if since_id > 0 else "created_at:>2020-01-01",
+                        "limit": 20,
+                        "sort_by": "created_at",
+                        "order_by": "desc",
+                        "expand": "true"
+                    },
                 )
                 resp.raise_for_status()
                 data = resp.json()
@@ -279,7 +285,15 @@ async def poll_zammad_for_new_tickets():
 
         from database import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
-            for zt in new_tickets:
+            for item in new_tickets:
+                if isinstance(item, int) or (isinstance(item, str) and item.isdigit()):
+                    # Search returned just an ID, fetch the full ticket object
+                    zt = await zammad_client.get_ticket_detail(int(item))
+                    if not zt:
+                        continue
+                else:
+                    zt = item
+
                 zammad_id = str(zt.get("id", ""))
                 if not zammad_id:
                     continue
@@ -341,10 +355,13 @@ async def poll_zammad_for_new_tickets():
                 await trigger_ai_for_new_ticket(str(ticket.ticket_id))
             
             # Update _last_polled_id di luar blok (berlaku untuk tiket baru & existing)
-            for zt in new_tickets:
-                zid = str(zt.get("id", ""))
-                if zid.isdigit():
-                    _last_polled_id = max(_last_polled_id, int(zid))
+            for item in new_tickets:
+                if isinstance(item, int) or (isinstance(item, str) and item.isdigit()):
+                    _last_polled_id = max(_last_polled_id, int(item))
+                elif isinstance(item, dict):
+                    zid = str(item.get("id", ""))
+                    if zid.isdigit():
+                        _last_polled_id = max(_last_polled_id, int(zid))
 
         logger.info(f"[Zammad Polling] Processed {len(new_tickets)} tickets. Last ID: {_last_polled_id}")
 
