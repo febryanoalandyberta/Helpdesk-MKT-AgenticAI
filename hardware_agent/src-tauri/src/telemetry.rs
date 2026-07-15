@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tauri::AppHandle;
 use std::fs;
-use std::path::PathBuf;
 use mac_address::get_mac_address;
 use hostname::get as get_hostname;
 

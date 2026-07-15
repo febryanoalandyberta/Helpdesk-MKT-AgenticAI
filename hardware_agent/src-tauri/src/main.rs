@@ -4,9 +4,7 @@
 )]
 
 use tauri::{CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayEvent, Manager};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+
 
 mod telemetry;
 mod hardware_monitor;

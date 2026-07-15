@@ -1,3 +1,6 @@
+#![allow(non_camel_case_types)]
+#![allow(unused_variables)]
+
 use std::collections::{HashSet, HashMap};
 use std::time::Duration;
 use serde::{Deserialize, Serialize};
@@ -93,7 +96,7 @@ pub async fn start_hardware_monitor(app: AppHandle) {
         let mut lan_down_since: HashMap<String, std::time::Instant> = HashMap::new();
         
         // Initial population
-        if let Ok(usb_devices) = wmi_con.query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
+        if let Ok(usb_devices) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
             for dev in usb_devices {
                 previous_usb.insert(dev.device_id.clone());
             }
@@ -103,7 +106,7 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             std::thread::sleep(Duration::from_secs(5));
             
             // 1. Check USB Devices
-            if let Ok(usb_devices) = wmi_con.query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
+            if let Ok(usb_devices) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
                 let current_usb: HashSet<String> = usb_devices.iter().map(|d| d.device_id.clone()).collect();
                 let current_map: HashMap<String, String> = usb_devices.into_iter().map(|d| (d.device_id.clone(), d.name.unwrap_or_else(|| "Unknown USB Device".to_string()))).collect();
                 
@@ -141,7 +144,7 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             }
             
             // 2. Check LAN
-            if let Ok(adapters) = wmi_con.query::<Win32_NetworkAdapter>("SELECT DeviceID, Name, NetConnectionStatus FROM Win32_NetworkAdapter WHERE NetConnectionStatus IS NOT NULL") {
+            if let Ok(adapters) = wmi_con.raw_query::<Win32_NetworkAdapter>("SELECT DeviceID, Name, NetConnectionStatus FROM Win32_NetworkAdapter WHERE NetConnectionStatus IS NOT NULL") {
                 for adapter in adapters {
                     let id = adapter.device_id.clone();
                     let status = adapter.net_connection_status.unwrap_or(0);
@@ -176,7 +179,7 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             } // This closes if let Ok(adapters)
 
             // 3. Check Monitors/HDMI
-            if let Ok(monitors) = wmi_con.query::<Win32_DesktopMonitor>("SELECT DeviceID, Name FROM Win32_DesktopMonitor") {
+            if let Ok(monitors) = wmi_con.raw_query::<Win32_DesktopMonitor>("SELECT DeviceID, Name FROM Win32_DesktopMonitor") {
                 let current_monitors: HashSet<String> = monitors.iter().map(|d| d.device_id.clone()).collect();
                 let current_map: HashMap<String, String> = monitors.into_iter().map(|d| (d.device_id.clone(), d.name.unwrap_or_else(|| "Unknown Display".to_string()))).collect();
                 
