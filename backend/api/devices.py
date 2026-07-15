@@ -27,6 +27,8 @@ class TelemetryRequest(BaseModel):
     cpu_usage: float
     ram_usage: float
     disk_usage: float
+    disk_total_gb: Optional[float] = None
+    disk_free_gb: Optional[float] = None
     temperature: float
     current_active_app: Optional[str] = None
     current_active_url: Optional[str] = None
@@ -136,6 +138,8 @@ async def receive_telemetry(
     device.cpu_usage = data.cpu_usage
     device.ram_usage = data.ram_usage
     device.disk_usage = data.disk_usage
+    device.disk_total_gb = data.disk_total_gb
+    device.disk_free_gb = data.disk_free_gb
     device.temperature = data.temperature
     device.current_active_app = data.current_active_app
     device.current_active_url = data.current_active_url

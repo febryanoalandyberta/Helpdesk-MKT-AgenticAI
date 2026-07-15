@@ -50,6 +50,8 @@ class Device(Base):
     cpu_usage = Column(Float, nullable=True)
     ram_usage = Column(Float, nullable=True)
     disk_usage = Column(Float, nullable=True)
+    disk_total_gb = Column(Float, nullable=True)
+    disk_free_gb = Column(Float, nullable=True)
     temperature = Column(Float, nullable=True)
     
     # User Activity
@@ -94,6 +96,8 @@ class Device(Base):
             "cpu_usage": self.cpu_usage,
             "ram_usage": self.ram_usage,
             "disk_usage": self.disk_usage,
+            "disk_total_gb": self.disk_total_gb,
+            "disk_free_gb": self.disk_free_gb,
             "temperature": self.temperature,
             "current_active_app": self.current_active_app,
             "current_active_url": self.current_active_url,

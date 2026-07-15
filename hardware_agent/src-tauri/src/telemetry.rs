@@ -22,6 +22,8 @@ struct TelemetryRequest {
     cpu_usage: f32,
     ram_usage: f32,
     disk_usage: f32,
+    disk_total_gb: Option<f32>,
+    disk_free_gb: Option<f32>,
     temperature: f32,
     current_active_app: Option<String>,
     current_active_url: Option<String>,
@@ -134,11 +136,29 @@ pub async fn start_telemetry_loop(_app: AppHandle) {
             app_title = Some(win.title);
         }
 
+        let mut total_disk: u64 = 0;
+        let mut avail_disk: u64 = 0;
+        for disk in sys.disks() {
+            total_disk += disk.total_space();
+            avail_disk += disk.available_space();
+        }
+        
+        let disk_usage_pct = if total_disk > 0 {
+            ((total_disk - avail_disk) as f32 / total_disk as f32) * 100.0
+        } else {
+            0.0
+        };
+        
+        let total_disk_gb = total_disk as f32 / 1_073_741_824.0;
+        let avail_disk_gb = avail_disk as f32 / 1_073_741_824.0;
+
         let payload = TelemetryRequest {
             ip_address: get_local_ip(),
             cpu_usage,
             ram_usage,
-            disk_usage: 0.0,
+            disk_usage: disk_usage_pct,
+            disk_total_gb: Some(total_disk_gb),
+            disk_free_gb: Some(avail_disk_gb),
             temperature: 45.0, // Mock temperature for now
             current_active_app: app_name.or_else(|| Some("Unknown".to_string())),
             current_active_url: app_title,

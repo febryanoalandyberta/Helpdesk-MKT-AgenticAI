@@ -519,13 +519,14 @@ async function loadDevices() {
       <td><code style="color:#22d3a0">${d.ip_address || '—'}</code></td>
       <td style="color:#8892b0">${d.operating_system || '—'} ${d.os_version || ''}</td>
       <td>
-        <div style="font-size:11px; margin-bottom:4px">CPU: <strong>${d.cpu_usage ? d.cpu_usage.toFixed(1) + '%' : '—'}</strong></div>
-        <div style="font-size:11px; margin-bottom:4px">RAM: <strong>${d.ram_usage ? d.ram_usage.toFixed(1) + '%' : '—'}</strong></div>
-        <div style="font-size:11px">Suhu: <strong>${d.temperature ? d.temperature.toFixed(1) + '°C' : '—'}</strong></div>
+        <div style="font-size:11px; margin-bottom:4px">CPU: <strong>${d.status === 'OFFLINE' ? '—' : (d.cpu_usage ? d.cpu_usage.toFixed(1) + '%' : '—')}</strong></div>
+        <div style="font-size:11px; margin-bottom:4px">RAM: <strong>${d.status === 'OFFLINE' ? '—' : (d.ram_usage ? d.ram_usage.toFixed(1) + '%' : '—')}</strong></div>
+        <div style="font-size:11px; margin-bottom:4px">Disk: <strong>${d.status === 'OFFLINE' ? '—' : (d.disk_free_gb ? d.disk_free_gb.toFixed(0) + 'GB / ' + d.disk_total_gb.toFixed(0) + 'GB' : '—')}</strong></div>
+        <div style="font-size:11px">Suhu: <strong>${d.status === 'OFFLINE' ? '—' : (d.temperature ? d.temperature.toFixed(1) + '°C' : '—')}</strong></div>
       </td>
       <td>
-        <div style="font-size:11px; margin-bottom:4px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.current_active_app || ''}">App: <span style="color:#a855f7">${d.current_active_app || '—'}</span></div>
-        <div style="font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.current_active_url || ''}">URL: <a href="${d.current_active_url || '#'}" target="_blank" style="color:#38bdf8; text-decoration:none;">${d.current_active_url || '—'}</a></div>
+        <div style="font-size:11px; margin-bottom:4px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.current_active_app || ''}">App: <span style="color:#a855f7">${d.status === 'OFFLINE' ? '—' : (d.current_active_app || '—')}</span></div>
+        <div style="font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.current_active_url || ''}">URL: <a href="${d.current_active_url || '#'}" target="_blank" style="color:#38bdf8; text-decoration:none;">${d.status === 'OFFLINE' ? '—' : (d.current_active_url || '—')}</a></div>
       </td>
       <td>${deviceStatusBadge(d.status)}</td>
       <td style="color:#8892b0;font-size:11px">${d.last_health_check ? timeAgo(d.last_health_check) : (d.last_ping ? timeAgo(d.last_ping) : '—')}</td>
