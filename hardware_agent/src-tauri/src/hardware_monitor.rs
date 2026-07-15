@@ -173,6 +173,8 @@ pub async fn start_hardware_monitor(app: AppHandle) {
                         let _ = tx.blocking_send(("LAN".to_string(), name.clone(), "Network adapter disconnected".to_string()));
                     }
                 }
+            } // This closes if let Ok(adapters)
+
             // 3. Check Monitors/HDMI
             if let Ok(monitors) = wmi_con.query::<Win32_DesktopMonitor>("SELECT DeviceID, Name FROM Win32_DesktopMonitor") {
                 let current_monitors: HashSet<String> = monitors.iter().map(|d| d.device_id.clone()).collect();
