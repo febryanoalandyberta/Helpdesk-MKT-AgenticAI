@@ -1,7 +1,7 @@
 {
   "name": "hardware-agent",
-  "version": "1.0.0",
-  "description": "MKT Helpdesk AI Hardware Agent",
+  "version": "1.0.2",
+  "description": "MKT POS Hardware Telemetry Agent",
   "scripts": {
     "tauri": "tauri"
   },
