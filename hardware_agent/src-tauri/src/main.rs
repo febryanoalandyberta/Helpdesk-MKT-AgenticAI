@@ -82,7 +82,10 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            send_chat_message
+            send_chat_message,
+            escalate_ticket,
+            poll_chat_messages,
+            send_live_chat
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -121,4 +124,58 @@ async fn send_chat_message(message: String) -> Result<ChatResponse, String> {
             },
             Err(e) => Err(format!("Network Error: {}", e))
         }
+}
+
+#[tauri::command]
+async fn escalate_ticket(ticket_id: String) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let url = format!("http://10.20.0.193:8000/api/tickets/{}/escalate", ticket_id);
+    match client.post(&url).send().await {
+        Ok(res) => {
+            if res.status().is_success() {
+                Ok("Success".to_string())
+            } else {
+                Err(format!("Server returned {}", res.status()))
+            }
+        },
+        Err(e) => Err(format!("Network Error: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn poll_chat_messages(ticket_id: String) -> Result<Vec<serde_json::Value>, String> {
+    let client = reqwest::Client::new();
+    let url = format!("http://10.20.0.193:8000/api/chat/messages/{}", ticket_id);
+    match client.get(&url).send().await {
+        Ok(res) => {
+            if res.status().is_success() {
+                if let Ok(json) = res.json::<Vec<serde_json::Value>>().await {
+                    return Ok(json);
+                }
+            }
+            Err("Failed to parse".to_string())
+        },
+        Err(e) => Err(format!("Network Error: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn send_live_chat(ticket_id: String, message: String) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let url = format!("http://10.20.0.193:8000/api/chat/messages/{}", ticket_id);
+    let payload = serde_json::json!({
+        "sender": "USER",
+        "message_type": "TEXT",
+        "content": message
+    });
+    match client.post(&url).json(&payload).send().await {
+        Ok(res) => {
+            if res.status().is_success() {
+                Ok("Success".to_string())
+            } else {
+                Err(format!("Server returned {}", res.status()))
+            }
+        },
+        Err(e) => Err(format!("Network Error: {}", e))
+    }
 }

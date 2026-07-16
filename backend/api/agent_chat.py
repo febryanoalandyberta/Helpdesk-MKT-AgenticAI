@@ -281,3 +281,42 @@ async def export_chat_pdf(ticket_id: str, db: AsyncSession = Depends(get_db)):
         filename=f"Chat_Evidence_{ticket.ticket_id}.pdf", 
         media_type="application/pdf"
     )
+
+class LiveChatMessage(BaseModel):
+    sender: str
+    message_type: str = "TEXT"
+    content: str
+
+@router.get("/messages/{ticket_id}")
+async def get_chat_messages(ticket_id: str, db: AsyncSession = Depends(get_db)):
+    """Retrieve all chat messages for a ticket. Used for HTTP polling instead of WebSocket."""
+    q_msg = await db.execute(select(ChatMessage).where(ChatMessage.ticket_id == ticket_id).order_by(ChatMessage.timestamp.asc()))
+    messages = q_msg.scalars().all()
+    return [msg.to_dict() for msg in messages]
+
+@router.post("/messages/{ticket_id}")
+async def post_live_chat_message(ticket_id: str, data: LiveChatMessage, db: AsyncSession = Depends(get_db)):
+    """Post a live chat message via HTTP (avoids WebSocket Mixed Content block)."""
+    sender_enum = ChatSender.USER
+    if data.sender == "AGENT":
+        sender_enum = ChatSender.AGENT
+        
+    msg = ChatMessage(
+        ticket_id=ticket_id,
+        sender=sender_enum,
+        message_type=data.message_type,
+        content=data.content
+    )
+    db.add(msg)
+    await db.commit()
+    
+    # Broadcast to any active websockets (like the Dashboard)
+    broadcast_data = {
+        "sender": data.sender,
+        "message_type": data.message_type,
+        "content": data.content,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    await manager.broadcast(ticket_id, broadcast_data)
+    
+    return {"status": "success"}

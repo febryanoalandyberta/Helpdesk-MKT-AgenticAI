@@ -178,6 +178,8 @@
       this.style.height = Math.min(this.scrollHeight, 100) + 'px';
     });
 
+    let liveChatInterval = null;
+
     // ── Live Chat Escalation (Fix #3) ──────────────────────────────
     async function requestLiveChat() {
       const escalateBtn = document.getElementById('escalate-btn');
@@ -189,53 +191,49 @@
       addMessage('Meminta koneksi Live Chat ke tim IT Helpdesk...', 'system');
 
       try {
-        // Step 1: Escalate ticket via REST
-        const res = await fetch(`http://10.20.0.193:8000/api/tickets/${currentTicketId}/escalate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // Step 1: Escalate ticket via Rust (bypasses CSP/Mixed Content)
+        await invoke('escalate_ticket', { ticketId: currentTicketId });
+        
+        isLiveChatMode = true;
+        if (escalateBtn) { escalateBtn.textContent = '✅ Terhubung'; escalateBtn.disabled = true; }
+        addMessage('✅ Anda sudah terhubung dengan IT Helpdesk. Silakan sampaikan pertanyaan Anda.', 'ai');
 
-        // Step 2: Connect WebSocket
-        ws = new WebSocket(`ws://10.20.0.193:8000/api/chat/ws/${currentTicketId}`);
-
-        ws.onopen = () => {
-          isLiveChatMode = true;
-          if (escalateBtn) { escalateBtn.textContent = '✅ Terhubung'; escalateBtn.disabled = true; }
-          addMessage('✅ Anda sudah terhubung dengan IT Helpdesk. Silakan sampaikan pertanyaan Anda.', 'ai');
-        };
-
-        ws.onmessage = (event) => {
+        // Step 2: Start polling for new messages
+        let lastMessageCount = 0;
+        liveChatInterval = setInterval(async () => {
+          if (!isLiveChatMode) {
+            clearInterval(liveChatInterval);
+            return;
+          }
           try {
-            const data = JSON.parse(event.data);
-            if (data.sender === 'AGENT') {
-              addMessage(data.content, 'ai');
-              appWindow.unminimize().catch(() => {});
-              appWindow.show().catch(() => {});
-              appWindow.setFocus().catch(() => {});
-              if (window.__TAURI__.notification) {
-                window.__TAURI__.notification.sendNotification({
-                  title: 'IT Helpdesk', body: data.content.substring(0, 100)
-                });
+            const messages = await invoke('poll_chat_messages', { ticketId: currentTicketId });
+            if (messages.length > lastMessageCount) {
+              const newMessages = messages.slice(lastMessageCount);
+              lastMessageCount = messages.length;
+              
+              for (const data of newMessages) {
+                // only show agent messages, since user messages are added directly locally
+                if (data.sender === 'AGENT') {
+                  addMessage(data.content, 'ai');
+                  appWindow.unminimize().catch(() => {});
+                  appWindow.show().catch(() => {});
+                  appWindow.setFocus().catch(() => {});
+                  if (window.__TAURI__.notification) {
+                    window.__TAURI__.notification.sendNotification({
+                      title: 'IT Helpdesk', body: data.content.substring(0, 100)
+                    });
+                  }
+                }
               }
             }
-          } catch (err) { console.error('WS parse error', err); }
-        };
-
-        ws.onerror = () => {
-          addMessage('❌ Koneksi Live Chat gagal. Silakan coba lagi.', 'system');
-          if (escalateBtn) { escalateBtn.disabled = false; escalateBtn.textContent = 'Coba Lagi'; }
-          isLiveChatMode = false;
-        };
-
-        ws.onclose = () => {
-          addMessage('Live Chat telah diakhiri.', 'system');
-          isLiveChatMode = false;
-        };
+          } catch (err) {
+            console.error('Polling error', err);
+          }
+        }, 3000); // poll every 3 seconds
 
       } catch (e) {
         console.error('Escalate error:', e);
-        addMessage(`❌ Gagal mengaktifkan Live Chat: ${e.message || e}`, 'system');
+        addMessage(`❌ Gagal mengaktifkan Live Chat: ${e}`, 'system');
         if (escalateBtn) { escalateBtn.disabled = false; escalateBtn.textContent = 'Coba Lagi'; }
       }
     }
@@ -249,9 +247,16 @@
       input.value = '';
       input.style.height = 'auto';
 
-      // Live Chat mode → send via WebSocket
-      if (isLiveChatMode && ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ sender: 'USER', message_type: 'TEXT', content: text }));
+      // Live Chat mode → send via Rust HTTP (bypasses CSP/Mixed Content)
+      if (isLiveChatMode) {
+        btnSend.disabled = true;
+        try {
+          await invoke('send_live_chat', { ticketId: currentTicketId, message: text });
+        } catch(e) {
+          addMessage(`❌ Gagal mengirim pesan: ${e}`, 'system');
+        } finally {
+          btnSend.disabled = false;
+        }
         return;
       }
 
