@@ -31,31 +31,15 @@ jobs:
         working-directory: ./hardware_agent
         run: npm install
 
-      - name: Build Tauri App
-        working-directory: ./hardware_agent
-        run: npm run tauri build
-
-      - name: Get version
-        id: get_version
-        shell: pwsh
-        run: |
-          $v = (Get-Content hardware_agent/src-tauri/tauri.conf.json | ConvertFrom-Json).package.version
-          echo "VERSION=$v" >> $env:GITHUB_OUTPUT
-
-      - name: Rename installer to avoid spaces in filename
-        shell: pwsh
-        run: |
-          $src = Get-ChildItem -Path "hardware_agent/src-tauri/target/release/bundle/nsis/*.exe" | Select-Object -First 1
-          Write-Host "Source: $($src.FullName)"
-          Copy-Item $src.FullName -Destination "MKT_Hardware_Agent_setup.exe"
-          Write-Host "Renamed to: MKT_Hardware_Agent_setup.exe"
-
-      - name: Upload to GitHub Releases
-        uses: softprops/action-gh-release@v2
+      - name: Build and Release Tauri App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: hardware-agent-v${{ steps.get_version.outputs.VERSION }}
-          name: "MKT Hardware Agent v${{ steps.get_version.outputs.VERSION }}"
-          body: "Installer MKT Hardware Agent versi ${{ steps.get_version.outputs.VERSION }} untuk Windows."
-          files: MKT_Hardware_Agent_setup.exe
-          make_latest: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          projectPath: hardware_agent
+          tagName: hardware-agent-v__VERSION__
+          releaseName: "MKT Hardware Agent v__VERSION__"
+          releaseBody: "Automated Release dari GitHub Actions."
+          releaseDraft: false
+          prerelease: false
+
