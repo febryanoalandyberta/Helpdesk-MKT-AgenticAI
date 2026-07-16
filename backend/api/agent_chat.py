@@ -98,7 +98,7 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
             await db.commit()
 
     # 4. Trigger AI (CrewAI)
-    ai_response = "Mohon ditunggu. Laporan Anda sedang dianalisis oleh IT Helpdesk..."
+    ai_response = "Mohon ditunggu, laporan Anda sedang kami analisis..."
     try:
         from api.tickets import process_ticket_ai
         await process_ticket_ai(str(ticket.ticket_id))
@@ -115,8 +115,11 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
             "Human:", "Assistant:", "System:", "> Entering", "> Finished",
         ]
         has_leak = any(kw.lower() in raw.lower() for kw in internal_keywords)
+        
+        import re
+        has_chinese = bool(re.search(r'[\u4e00-\u9fff]', raw))
 
-        if has_leak or not raw.strip():
+        if has_leak or has_chinese or not raw.strip():
             ai_response = (
                 "Terima kasih sudah menginformasikan kendala ini. "
                 "Tim IT Helpdesk sedang menganalisis lebih lanjut dan akan segera memberikan solusi. "
