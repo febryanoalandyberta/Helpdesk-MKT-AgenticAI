@@ -142,10 +142,13 @@
       div.className = 'msg-escalate';
       div.innerHTML = `
         Masalah belum terselesaikan? Anda dapat berbicara langsung dengan tim IT Helpdesk kami.
-        <button class="btn-escalate" id="escalate-btn" onclick="requestLiveChat()">Hubungkan ke IT Helpdesk</button>
+        <button class="btn-escalate" id="escalate-btn">Hubungkan ke IT Helpdesk</button>
       `;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
+
+      // Add event listener manually to avoid inline onclick CSP blocks
+      document.getElementById('escalate-btn').addEventListener('click', requestLiveChat);
     }
 
     // ── Attach File (Fix #4) ───────────────────────────────────────
@@ -255,7 +258,7 @@
       // AI Chat mode
       messageCount++;
       btnSend.disabled = true;
-      const loading = addMessage('Mohon ditunggu, sedang dianalisis oleh AI...', 'ai');
+      const loading = addMessage('Mohon ditunggu, laporan Anda sedang kami analisis...', 'ai');
 
       try {
         const response = await invoke('send_chat_message', { message: text });
