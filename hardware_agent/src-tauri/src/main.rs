@@ -226,13 +226,15 @@ async fn upload_attachment(file_path: String, ticket_id: String) -> Result<Strin
     
     match client.post(&url).multipart(form).send().await {
         Ok(res) => {
-            if res.status().is_success() {
+            let status = res.status();
+            if status.is_success() {
                 if let Ok(json) = res.json::<serde_json::Value>().await {
                     let uploaded_url = json["url"].as_str().unwrap_or("").to_string();
                     return Ok(uploaded_url);
                 }
+                return Err("Gagal membaca respons dari server.".to_string());
             }
-            Err(format!("Server returned {}", res.status()))
+            Err(format!("Server returned {}", status))
         },
         Err(e) => Err(format!("Network Error: {}", e))
     }
