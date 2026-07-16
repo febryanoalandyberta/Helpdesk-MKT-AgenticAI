@@ -83,8 +83,8 @@
 </head>
 <body>
   <div class="header" data-tauri-drag-region>
-    <span class="header-title" style="display: flex; align-items: center;">
-      <img src="./assets/logo.png" style="width: 20px; height: 20px; border-radius: 4px; margin-right: 6px;"> 
+    <span class="header-title" style="display: flex; align-items: center; justify-content: center; height: 100%;">
+      <img src="./assets/logo.png" width="20" height="20" style="object-fit: contain; border-radius: 4px; margin-right: 6px; display: inline-block;"> 
       MKT IT Helpdesk
     </span>
     <div class="window-controls">
@@ -267,6 +267,7 @@
 
       // Extract attachment path if exists
       let attachmentPath = null;
+      let displayHtml = text.replace(/\n/g, '<br>');
       const attachRegex = /\[Lampiran:\s*([^\]]+)\]/;
       const match = text.match(attachRegex);
       if (match) {
@@ -276,9 +277,11 @@
             input.value = text.replace(attachRegex, '').trim();
             return;
         }
+        
+        // Remove the [Lampiran: path] from display
+        displayHtml = displayHtml.replace(attachRegex, '').trim();
       }
 
-      addMessage(text, 'user');
       input.value = '';
       input.style.height = 'auto';
       btnSend.disabled = true;
@@ -288,6 +291,14 @@
         const loadingUpload = addMessage('Sedang mengunggah file...', 'system');
         try {
             const uploadUrl = await invoke('upload_attachment', { filePath: attachmentPath, ticketId: currentTicketId });
+            
+            // If it's an image, show preview locally
+            if (attachmentPath.toLowerCase().match(/\.(png|jpe?g|gif)$/i)) {
+               displayHtml += `<br><img src="http://10.20.0.193:8000${uploadUrl}" style="max-width: 200px; border-radius: 8px; margin-top: 5px;">`;
+            } else {
+               displayHtml += `<br><a href="http://10.20.0.193:8000${uploadUrl}" target="_blank" style="color: #fff; text-decoration: underline;">📄 Lampiran</a>`;
+            }
+
             text = text.replace(attachRegex, `[Lampiran: ${uploadUrl}]`);
             loadingUpload.style.display = 'none';
         } catch (e) {
@@ -295,6 +306,15 @@
             btnSend.disabled = false;
             return;
         }
+      }
+
+      // Add to UI now that we have processed the attachment
+      if (displayHtml) {
+          const div = document.createElement('div');
+          div.className = 'msg msg-user';
+          div.innerHTML = displayHtml;
+          chat.appendChild(div);
+          chat.scrollTop = chat.scrollHeight;
       }
 
       // Live Chat mode → send via Rust HTTP (bypasses CSP/Mixed Content)
