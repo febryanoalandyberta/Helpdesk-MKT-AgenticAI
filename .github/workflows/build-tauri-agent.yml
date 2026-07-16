@@ -6,10 +6,13 @@ on:
       - 'hardware_agent/**'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,9 +35,25 @@ jobs:
         working-directory: ./hardware_agent
         run: npm run tauri build
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MKT_Hardware_Agent_Installer
-          path: hardware_agent/src-tauri/target/release/bundle/nsis/
-          if-no-files-found: error
+      - name: Get version from tauri.conf.json
+        id: get_version
+        run: |
+          $version = (Get-Content hardware_agent/src-tauri/tauri.conf.json | ConvertFrom-Json).package.version
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Delete old release if exists
+        run: |
+          gh release delete "hardware-agent-v${{ steps.get_version.outputs.VERSION }}" --yes 2>$null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release and Upload EXE
+        run: |
+          $exe = Get-ChildItem -Path "hardware_agent/src-tauri/target/release/bundle/nsis/*.exe" | Select-Object -First 1
+          Write-Host "Found installer: $($exe.FullName)"
+          gh release create "hardware-agent-v${{ steps.get_version.outputs.VERSION }}" `
+            "$($exe.FullName)#MKT_Hardware_Agent_${{ steps.get_version.outputs.VERSION }}_setup.exe" `
+            --title "MKT Hardware Agent v${{ steps.get_version.outputs.VERSION }}" `
+            --notes "Build otomatis untuk MKT Hardware Agent versi ${{ steps.get_version.outputs.VERSION }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
