@@ -11,11 +11,11 @@ edition = "2021"
 tauri-build = { version = "1.5.0", features = [] }
 
 [dependencies]
-tauri = { version = "1.5.0", features = ["api-all", "system-tray", "dialog"] }
+tauri = { version = "1.5.0", features = [ "shell-execute", "window-all", "http-all", "dialog-all", "shell-open", "system-tray", "dialog"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sysinfo = "0.29"
-reqwest = { version = "0.11", features = ["json", "blocking"] }
+reqwest = { version = "0.11", features = ["json", "blocking", "multipart"] }
 mac_address = "1.1.5"
 hostname = "0.3.1"
 tokio = { version = "1.28", features = ["full", "sync"] }

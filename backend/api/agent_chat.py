@@ -254,12 +254,19 @@ async def export_chat_pdf(ticket_id: str, db: AsyncSession = Depends(get_db)):
     # Clean up non-latin1 characters for basic helvetica font
     clean_title = ticket.title.encode('latin-1', 'replace').decode('latin-1') if ticket.title else ""
     pdf.cell(0, 8, f"Judul Tiket: {clean_title}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 8, f"Tanggal Export: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC", new_x="LMARGIN", new_y="NEXT")
+    
+    # Konversi ke WIB (GMT+7)
+    from datetime import timedelta
+    export_time_wib = datetime.utcnow() + timedelta(hours=7)
+    pdf.cell(0, 8, f"Tanggal Export: {export_time_wib.strftime('%Y-%m-%d %H:%M:%S')} WIB", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(10)
 
     for msg in messages:
         sender_label = "IT Helpdesk" if msg.sender.name == "AGENT" else "Kasir (POS User)"
-        time_str = msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Asumsikan msg.timestamp tersimpan dalam UTC, konversi ke WIB
+        msg_time_wib = msg.timestamp + timedelta(hours=7)
+        time_str = msg_time_wib.strftime('%Y-%m-%d %H:%M:%S')
         
         pdf.set_font("helvetica", "B", 10)
         pdf.cell(0, 6, f"[{time_str}] {sender_label}:", new_x="LMARGIN", new_y="NEXT")

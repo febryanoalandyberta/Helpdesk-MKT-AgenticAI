@@ -1237,7 +1237,12 @@ let currentChatTicketId = null;
 function openLiveChat(ticketId) {
   currentChatTicketId = ticketId;
   document.getElementById('ticketDetailModal').classList.remove('show');
-  document.getElementById('liveChatModal').style.display = 'flex';
+  document.getElementById('modalOverlay').classList.add('show');
+  
+  const liveChatModal = document.getElementById('liveChatModal');
+  liveChatModal.style.display = 'flex';
+  // Use a slight timeout to ensure CSS transition works if display was none
+  setTimeout(() => liveChatModal.classList.add('show'), 10);
   
   const chatBody = document.getElementById('liveChatBody');
   chatBody.innerHTML = '<div class="loading-state">Menghubungkan ke ruangan chat...</div>';
@@ -1267,7 +1272,10 @@ function openLiveChat(ticketId) {
 }
 
 function closeLiveChatModal() {
-  document.getElementById('liveChatModal').style.display = 'none';
+  const liveChatModal = document.getElementById('liveChatModal');
+  liveChatModal.classList.remove('show');
+  setTimeout(() => liveChatModal.style.display = 'none', 300); // wait for animation
+  
   document.getElementById('modalOverlay').classList.remove('show');
   if (liveChatWs) {
     liveChatWs.close();

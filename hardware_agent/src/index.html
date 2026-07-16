@@ -83,8 +83,12 @@
 </head>
 <body>
   <div class="header" data-tauri-drag-region>
-    <span class="header-title">⚡ MKT IT Helpdesk</span>
+    <span class="header-title" style="display: flex; align-items: center;">
+      <img src="./assets/logo.png" style="width: 20px; height: 20px; border-radius: 4px; margin-right: 6px;"> 
+      MKT IT Helpdesk
+    </span>
     <div class="window-controls">
+      <button class="win-btn close" id="btn-close-ticket" style="display:none; margin-right: 15px; border-color:#22c55e; color:#22c55e;" title="Selesai & Tutup Tiket">✔ Selesai</button>
       <button class="win-btn" id="btn-minimize" title="Minimize">─</button>
       <button class="win-btn close" id="btn-close" title="Tutup">✕</button>
     </div>
@@ -238,18 +242,63 @@
       }
     }
 
+    // ── Close Ticket (Fix #1) ──────────────────────────────────────
+    document.getElementById('btn-close-ticket').addEventListener('click', async () => {
+      if (!currentTicketId) return;
+      if (!confirm("Apakah Anda yakin ingin menutup tiket ini? (Menandakan masalah sudah selesai)")) return;
+      
+      try {
+        await invoke('close_customer_ticket', { ticketId: currentTicketId });
+        addMessage('✅ Tiket telah berhasil ditutup. Terima kasih!', 'system');
+        
+        isLiveChatMode = false;
+        if (liveChatInterval) clearInterval(liveChatInterval);
+        document.getElementById('btn-close-ticket').style.display = 'none';
+        currentTicketId = null;
+      } catch (e) {
+        addMessage(`❌ Gagal menutup tiket: ${e}`, 'system');
+      }
+    });
+
     // ── Send Message ───────────────────────────────────────────────
     async function sendMessage() {
-      const text = input.value.trim();
+      let text = input.value.trim();
       if (!text) return;
+
+      // Extract attachment path if exists
+      let attachmentPath = null;
+      const attachRegex = /\[Lampiran:\s*([^\]]+)\]/;
+      const match = text.match(attachRegex);
+      if (match) {
+        attachmentPath = match[1];
+        if (!currentTicketId) {
+            addMessage('❌ Silakan kirim pesan teks terlebih dahulu sebelum melampirkan file.', 'system');
+            input.value = text.replace(attachRegex, '').trim();
+            return;
+        }
+      }
 
       addMessage(text, 'user');
       input.value = '';
       input.style.height = 'auto';
+      btnSend.disabled = true;
+
+      // Upload attachment if any
+      if (attachmentPath) {
+        const loadingUpload = addMessage('Sedang mengunggah file...', 'system');
+        try {
+            const uploadUrl = await invoke('upload_attachment', { filePath: attachmentPath, ticketId: currentTicketId });
+            text = text.replace(attachRegex, `[Lampiran: ${uploadUrl}]`);
+            loadingUpload.style.display = 'none';
+        } catch (e) {
+            loadingUpload.innerHTML = `❌ Gagal mengunggah file: ${e}`;
+            btnSend.disabled = false;
+            return;
+        }
+      }
 
       // Live Chat mode → send via Rust HTTP (bypasses CSP/Mixed Content)
       if (isLiveChatMode) {
-        btnSend.disabled = true;
         try {
           await invoke('send_live_chat', { ticketId: currentTicketId, message: text });
         } catch(e) {
@@ -271,6 +320,7 @@
 
         if (response.ticket_id && response.ticket_id !== '') {
           currentTicketId = response.ticket_id;
+          document.getElementById('btn-close-ticket').style.display = 'block';
         }
 
         if (messageCount >= 2) {

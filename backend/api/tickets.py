@@ -377,3 +377,53 @@ async def escalate_ticket_live_chat(ticket_id: str, db: AsyncSession = Depends(g
     
     await db.commit()
     return {"message": "Live Chat Escalation successful."}
+
+@router.post("/{ticket_id}/close-by-customer")
+async def close_ticket_by_customer(ticket_id: str, db: AsyncSession = Depends(get_db)):
+    """Closes the ticket initiated by the customer from Hardware Agent UI."""
+    q = await db.execute(select(Ticket).where(Ticket.ticket_id == ticket_id))
+    ticket = q.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    if ticket.status == TicketStatus.CLOSED or ticket.status == TicketStatus.RESOLVED:
+        return {"message": "Ticket is already closed."}
+
+    ticket.status = TicketStatus.RESOLVED
+    ticket.resolution = "Masalah telah diselesaikan secara mandiri oleh Customer (ditutup via MKT Hardware Agent)."
+    ticket.resolved_at = datetime.utcnow()
+    ticket.resolved_by = "Customer"
+    
+    db.add(AuditLog(
+        ticket_id=ticket_id,
+        actor="POS User",
+        action="TICKET_CLOSED_BY_CUSTOMER",
+        result="SUCCESS",
+        detail="Tiket ditutup langsung oleh Kasir.",
+    ))
+    
+    await db.commit()
+    
+    # Sync with Zammad
+    if ticket.zammad_ticket_id:
+        try:
+            from api.zammad_webhook import zammad_client
+            note = "✅ Tiket ditutup oleh Customer (Kasir) melalui aplikasi MKT Hardware Agent."
+            await zammad_client.update_ticket(int(ticket.zammad_ticket_id), note, state="closed")
+        except Exception as e:
+            logger.error(f"Failed to sync close ticket to Zammad: {e}")
+
+    # Notify Telegram
+    try:
+        from api.telegram import send_telegram_message
+        message = (
+            f"✅ <b>TIKET DITUTUP OLEH CUSTOMER</b> ✅\n\n"
+            f"<b>Ticket ID:</b> #{ticket.zammad_ticket_id or str(ticket.ticket_id)[:8]}\n"
+            f"<b>Problem:</b> {ticket.title}\n\n"
+            f"<i>Customer (Kasir) mengkonfirmasi bahwa masalah telah selesai dan menutup tiket melalui MKT Hardware Agent.</i>"
+        )
+        await send_telegram_message(message)
+    except Exception as e:
+        logger.error(f"Failed to send telegram notification for customer close: {e}")
+
+    return {"message": "Ticket successfully closed by customer."}

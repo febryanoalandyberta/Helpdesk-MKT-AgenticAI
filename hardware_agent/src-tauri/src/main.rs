@@ -85,7 +85,9 @@ fn main() {
             send_chat_message,
             escalate_ticket,
             poll_chat_messages,
-            send_live_chat
+            send_live_chat,
+            close_customer_ticket,
+            upload_attachment
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -175,6 +177,62 @@ async fn send_live_chat(ticket_id: String, message: String) -> Result<String, St
             } else {
                 Err(format!("Server returned {}", res.status()))
             }
+        },
+        Err(e) => Err(format!("Network Error: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn close_customer_ticket(ticket_id: String) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let url = format!("http://10.20.0.193:8000/api/tickets/{}/close-by-customer", ticket_id);
+    match client.post(&url).send().await {
+        Ok(res) => {
+            if res.status().is_success() {
+                Ok("Success".to_string())
+            } else {
+                Err(format!("Server returned {}", res.status()))
+            }
+        },
+        Err(e) => Err(format!("Network Error: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn upload_attachment(file_path: String, ticket_id: String) -> Result<String, String> {
+    use reqwest::multipart;
+    use std::path::Path;
+    
+    let path = Path::new(&file_path);
+    let file_name = path.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("attachment.png")
+        .to_string();
+        
+    let file_bytes = match std::fs::read(&path) {
+        Ok(bytes) => bytes,
+        Err(e) => return Err(format!("Gagal membaca file: {}", e)),
+    };
+    
+    let part = multipart::Part::bytes(file_bytes)
+        .file_name(file_name)
+        .mime_str("application/octet-stream")
+        .unwrap_or_else(|_| multipart::Part::bytes(vec![]));
+        
+    let form = multipart::Form::new().part("file", part);
+    
+    let client = reqwest::Client::new();
+    let url = format!("http://10.20.0.193:8000/api/chat/upload?ticket_id={}", ticket_id);
+    
+    match client.post(&url).multipart(form).send().await {
+        Ok(res) => {
+            if res.status().is_success() {
+                if let Ok(json) = res.json::<serde_json::Value>().await {
+                    let uploaded_url = json["url"].as_str().unwrap_or("").to_string();
+                    return Ok(uploaded_url);
+                }
+            }
+            Err(format!("Server returned {}", res.status()))
         },
         Err(e) => Err(format!("Network Error: {}", e))
     }
