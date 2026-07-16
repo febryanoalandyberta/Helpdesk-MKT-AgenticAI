@@ -6,237 +6,281 @@
   <style>
     body {
       margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); color: #fff;
+      background: rgba(15, 23, 42, 0.95); color: #fff;
       display: flex; flex-direction: column; height: 100vh; overflow: hidden;
     }
     .header {
-      background: rgba(30, 41, 59, 0.8); padding: 15px; text-align: center; font-weight: bold;
+      background: rgba(30, 41, 59, 0.95); padding: 12px 15px; text-align: center; font-weight: bold;
       border-bottom: 1px solid #38bdf8;
-      -webkit-app-region: drag; user-select: none; cursor: default;
       display: flex; justify-content: center; align-items: center; position: relative;
+      -webkit-app-region: drag; user-select: none;
     }
+    .header-title { font-size: 15px; color: #38bdf8; }
     .window-controls {
-      position: absolute; right: 15px; display: flex; gap: 8px; -webkit-app-region: no-drag;
+      position: absolute; right: 10px; display: flex; gap: 4px; -webkit-app-region: no-drag;
     }
     .win-btn {
-      background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 0 5px; outline: none;
+      background: rgba(51, 65, 85, 0.8); border: 1px solid #475569; color: #94a3b8;
+      cursor: pointer; font-size: 12px; padding: 2px 8px; border-radius: 4px; line-height: 1.5;
+      transition: all 0.15s;
     }
-    .win-btn:hover { color: #fff; }
-    
+    .win-btn:hover { background: #475569; color: #fff; }
+    .win-btn.close:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
+
     .chat-container {
       flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
     }
     .msg {
-      max-width: 80%; padding: 10px 15px; border-radius: 12px; font-size: 14px; line-height: 1.4; word-wrap: break-word;
+      max-width: 82%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; word-wrap: break-word;
     }
-    .msg-user {
-      align-self: flex-end; background: #38bdf8; color: #000; border-bottom-right-radius: 2px;
-    }
-    .msg-ai {
-      align-self: flex-start; background: #1e293b; color: #e2e8f0; border-bottom-left-radius: 2px; border: 1px solid #334155;
+    .msg-user { align-self: flex-end; background: #0ea5e9; color: #fff; border-bottom-right-radius: 3px; }
+    .msg-ai   { align-self: flex-start; background: #1e293b; color: #e2e8f0; border-bottom-left-radius: 3px; border: 1px solid #334155; }
+    .msg-system {
+      align-self: center; background: rgba(51, 65, 85, 0.5); color: #94a3b8;
+      font-size: 11px; padding: 5px 12px; border-radius: 20px; border: 1px solid #475569; max-width: 90%;
     }
     .msg-escalate {
-      align-self: flex-start; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 12px; padding: 10px 15px; font-size: 13px; margin-top: 5px;
+      align-self: flex-start; background: rgba(56, 189, 248, 0.08); color: #38bdf8;
+      border: 1px solid #38bdf8; border-radius: 12px; padding: 12px 15px; font-size: 13px; max-width: 85%;
     }
     .btn-escalate {
-      background: #38bdf8; color: #0f172a; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 8px; display: block; width: 100%;
+      background: #0ea5e9; color: #fff; border: none; padding: 8px 14px; border-radius: 6px;
+      font-weight: bold; cursor: pointer; margin-top: 10px; display: block; width: 100%; font-size: 13px;
+      transition: background 0.15s;
     }
-    .btn-escalate:hover { background: #0ea5e9; }
-    
+    .btn-escalate:hover { background: #0284c7; }
+    .btn-escalate:disabled { background: #475569; cursor: not-allowed; }
+
     .input-area {
-      padding: 15px; background: rgba(30, 41, 59, 0.8); display: flex; gap: 10px; align-items: flex-end;
+      padding: 12px 15px; background: rgba(30, 41, 59, 0.95); display: flex; gap: 8px; align-items: flex-end;
+      border-top: 1px solid #334155;
     }
     textarea {
-      flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff;
-      resize: none; font-family: inherit; font-size: 14px; min-height: 20px; max-height: 120px; overflow-y: auto;
+      flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff;
+      resize: none; font-family: inherit; font-size: 13px; min-height: 38px; max-height: 100px; overflow-y: auto;
     }
     textarea:focus { outline: none; border-color: #38bdf8; }
-    
+
     .attach-btn {
-      padding: 10px 15px; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 18px; line-height: 1; height: 40px;
+      padding: 0; width: 38px; height: 38px; background: #1e293b; color: #94a3b8;
+      border: 1px solid #334155; border-radius: 8px; font-weight: bold; cursor: pointer;
+      font-size: 20px; line-height: 38px; text-align: center; transition: all 0.15s; flex-shrink: 0;
     }
-    .attach-btn:hover { background: #334155; }
-    
+    .attach-btn:hover { background: #334155; color: #fff; }
+
     .send-btn {
-      padding: 10px 20px; background: #38bdf8; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; height: 40px;
+      padding: 0 18px; height: 38px; background: #0ea5e9; color: #fff; border: none;
+      border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; flex-shrink: 0;
+      transition: background 0.15s;
     }
+    .send-btn:hover { background: #0284c7; }
+    .send-btn:disabled { background: #475569; cursor: not-allowed; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
   </style>
 </head>
 <body>
   <div class="header" data-tauri-drag-region>
-    ⚡ MKT IT Helpdesk
+    <span class="header-title">⚡ MKT IT Helpdesk</span>
     <div class="window-controls">
-      <button class="win-btn" onclick="minimizeWindow()" title="Minimize">_</button>
-      <button class="win-btn" onclick="closeWindow()" title="Close">✕</button>
+      <button class="win-btn" id="btn-minimize" title="Minimize">─</button>
+      <button class="win-btn close" id="btn-close" title="Tutup">✕</button>
     </div>
   </div>
   <div class="chat-container" id="chat">
-    <div class="msg msg-ai">Halo! Selamat datang di IT Helpdesk. Ada kendala yang bisa saya bantu hari ini? Laporan Anda akan langsung segera kami proses</div>
+    <div class="msg msg-ai">Halo! Selamat datang di IT Helpdesk. Ada kendala yang bisa saya bantu hari ini? Laporan Anda akan langsung segera kami proses 😊</div>
   </div>
   <div class="input-area">
-    <button class="attach-btn" onclick="attachFile()" title="Lampirkan Dokumen/Foto">+</button>
-    <textarea id="msgInput" rows="1" placeholder="Ketik pesan... (Shift+Enter u/ baris baru)" autofocus></textarea>
-    <button class="send-btn" onclick="sendMessage()">Kirim</button>
+    <button class="attach-btn" id="btn-attach" title="Lampirkan Foto/Dokumen">+</button>
+    <textarea id="msgInput" rows="1" placeholder="Ketik pesan... (Shift+Enter untuk baris baru)" autofocus></textarea>
+    <button class="send-btn" id="btn-send">Kirim</button>
   </div>
-  
+
   <script>
-    const { invoke } = window.__TAURI__.tauri;
-    const { appWindow } = window.__TAURI__.window;
-    const { open } = window.__TAURI__.dialog;
-    
-    const chat = document.getElementById('chat');
-    const input = document.getElementById('msgInput');
-    let messageCount = 0;
+    // ── Tauri v1 API ───────────────────────────────────────────────
+    const { invoke }           = window.__TAURI__.tauri;
+    const { appWindow }        = window.__TAURI__.window;
+    const { open: openDialog } = window.__TAURI__.dialog;
 
-    function minimizeWindow() {
-      appWindow.minimize();
-    }
+    // ── DOM refs ───────────────────────────────────────────────────
+    const chat    = document.getElementById('chat');
+    const input   = document.getElementById('msgInput');
+    const btnSend = document.getElementById('btn-send');
 
-    function closeWindow() {
-      // Hide window instead of exiting completely so background tasks still run
-      appWindow.hide();
-    }
-
-    // Auto-resize textarea
-    input.addEventListener('input', function() {
-      this.style.height = 'auto';
-      this.style.height = (this.scrollHeight) + 'px';
+    // ── Window Controls (Fix #5) ───────────────────────────────────
+    document.getElementById('btn-minimize').addEventListener('click', () => {
+      appWindow.minimize().catch(console.error);
+    });
+    document.getElementById('btn-close').addEventListener('click', () => {
+      appWindow.hide().catch(console.error);
     });
 
-    async function attachFile() {
-      try {
-        const selected = await open({
-          multiple: false,
-          filters: [{
-            name: 'Attachments',
-            extensions: ['png', 'jpeg', 'jpg', 'mp4', 'pdf', 'doc', 'docx']
-          }]
-        });
-        if (selected) {
-          // Placeholder: just append file path to text for now
-          // Di Fase 2 ini akan diubah menjadi proses upload file aktual
-          const currentVal = input.value;
-          input.value = currentVal ? `${currentVal}\n[Lampiran: ${selected}]` : `[Lampiran: ${selected}]`;
-          input.dispatchEvent(new Event('input')); // trigger resize
-        }
-      } catch (e) {
-        console.error("Gagal membuka file dialog", e);
-      }
-    }
+    // ── State ──────────────────────────────────────────────────────
+    let currentTicketId = null;
+    let ws              = null;
+    let isLiveChatMode  = false;
+    let messageCount    = 0;
+    let escalateShown   = false;
 
-    function addMessage(text, isUser) {
+    // ── Helpers ────────────────────────────────────────────────────
+    function addMessage(text, role) {
+      // role: 'user' | 'ai' | 'system'
       const div = document.createElement('div');
-      div.className = `msg ${isUser ? 'msg-user' : 'msg-ai'}`;
-      div.innerHTML = text.replace(/\n/g, '<br>');
+      div.className = `msg msg-${role}`;
+      div.innerHTML = String(text).replace(/\n/g, '<br>');
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
       return div;
     }
 
     function addEscalationPrompt() {
+      if (escalateShown) return;
+      escalateShown = true;
       const div = document.createElement('div');
-      div.className = `msg-escalate`;
+      div.className = 'msg-escalate';
       div.innerHTML = `
         Masalah belum terselesaikan? Anda dapat berbicara langsung dengan tim IT Helpdesk kami.
-        <button class="btn-escalate" onclick="requestLiveChat()">Hubungkan ke IT Helpdesk</button>
+        <button class="btn-escalate" id="escalate-btn" onclick="requestLiveChat()">Hubungkan ke IT Helpdesk</button>
       `;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    let currentTicketId = null;
-    let ws = null;
-    let isLiveChatMode = false;
+    // ── Attach File (Fix #4) ───────────────────────────────────────
+    document.getElementById('btn-attach').addEventListener('click', async () => {
+      try {
+        const selected = await openDialog({
+          multiple: false,
+          filters: [{
+            name: 'Attachments',
+            extensions: ['png', 'jpeg', 'jpg', 'gif', 'pdf', 'doc', 'docx']
+          }]
+        });
+        if (selected) {
+          const curr = input.value.trim();
+          input.value = curr ? `${curr}\n[Lampiran: ${selected}]` : `[Lampiran: ${selected}]`;
+          input.dispatchEvent(new Event('input'));
+        }
+      } catch (e) {
+        console.error('File dialog error:', e);
+        addMessage('Tidak dapat membuka pemilih file.', 'system');
+      }
+    });
 
+    // ── Auto-resize textarea ───────────────────────────────────────
+    input.addEventListener('input', function () {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    });
+
+    // ── Live Chat Escalation (Fix #3) ──────────────────────────────
     async function requestLiveChat() {
+      const escalateBtn = document.getElementById('escalate-btn');
       if (!currentTicketId) {
-        addMessage("Gagal meminta Live Chat: Tidak ada tiket aktif.", false);
+        addMessage('❌ Tidak ada tiket aktif. Silakan kirim pesan terlebih dahulu.', 'system');
         return;
       }
-      
-      addMessage("Meminta koneksi Live Chat ke tim IT Helpdesk...", true);
-      const loadingBubble = addMessage("Mohon ditunggu, sedang mencari agen IT yang tersedia...", false);
-      
-      // Update tiket di backend untuk eskalasi
+      if (escalateBtn) { escalateBtn.disabled = true; escalateBtn.textContent = 'Menghubungkan...'; }
+      addMessage('Meminta koneksi Live Chat ke tim IT Helpdesk...', 'system');
+
       try {
-        await fetch(`http://10.20.0.193:8000/api/tickets/${currentTicketId}/escalate`, { method: 'POST' });
-        
-        // Mulai koneksi WebSocket
-        const wsUrl = `ws://10.20.0.193:8000/api/chat/ws/${currentTicketId}`;
-        ws = new WebSocket(wsUrl);
-        
+        // Step 1: Escalate ticket via REST
+        const res = await fetch(`http://10.20.0.193:8000/api/tickets/${currentTicketId}/escalate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        // Step 2: Connect WebSocket
+        ws = new WebSocket(`ws://10.20.0.193:8000/api/chat/ws/${currentTicketId}`);
+
         ws.onopen = () => {
-          loadingBubble.innerHTML = "✅ Anda telah terhubung dengan agen IT Helpdesk. Silakan sampaikan pesan Anda.";
           isLiveChatMode = true;
+          if (escalateBtn) { escalateBtn.textContent = '✅ Terhubung'; escalateBtn.disabled = true; }
+          addMessage('✅ Anda sudah terhubung dengan IT Helpdesk. Silakan sampaikan pertanyaan Anda.', 'ai');
         };
-        
+
         ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          if (data.sender === 'AGENT') {
-            const { sendNotification } = window.__TAURI__.notification;
-            sendNotification({ title: 'IT Helpdesk', body: data.content });
-            appWindow.unminimize();
-            appWindow.show();
-            addMessage(data.content, false);
-          }
+          try {
+            const data = JSON.parse(event.data);
+            if (data.sender === 'AGENT') {
+              addMessage(data.content, 'ai');
+              appWindow.unminimize().catch(() => {});
+              appWindow.show().catch(() => {});
+              appWindow.setFocus().catch(() => {});
+              if (window.__TAURI__.notification) {
+                window.__TAURI__.notification.sendNotification({
+                  title: 'IT Helpdesk', body: data.content.substring(0, 100)
+                });
+              }
+            }
+          } catch (err) { console.error('WS parse error', err); }
         };
-        
+
         ws.onerror = () => {
-          addMessage("❌ Terjadi kesalahan pada koneksi Live Chat.", false);
-        };
-        
-        ws.onclose = () => {
-          addMessage("Live Chat telah diakhiri.", false);
+          addMessage('❌ Koneksi Live Chat gagal. Silakan coba lagi.', 'system');
+          if (escalateBtn) { escalateBtn.disabled = false; escalateBtn.textContent = 'Coba Lagi'; }
           isLiveChatMode = false;
         };
-        
-      } catch(e) {
-        loadingBubble.innerHTML = "❌ Gagal mengaktifkan Live Chat.";
+
+        ws.onclose = () => {
+          addMessage('Live Chat telah diakhiri.', 'system');
+          isLiveChatMode = false;
+        };
+
+      } catch (e) {
+        console.error('Escalate error:', e);
+        addMessage(`❌ Gagal mengaktifkan Live Chat: ${e.message || e}`, 'system');
+        if (escalateBtn) { escalateBtn.disabled = false; escalateBtn.textContent = 'Coba Lagi'; }
       }
     }
 
+    // ── Send Message ───────────────────────────────────────────────
     async function sendMessage() {
       const text = input.value.trim();
       if (!text) return;
-      
-      addMessage(text, true);
+
+      addMessage(text, 'user');
       input.value = '';
-      input.style.height = 'auto'; // reset textarea height
-      
+      input.style.height = 'auto';
+
+      // Live Chat mode → send via WebSocket
       if (isLiveChatMode && ws && ws.readyState === WebSocket.OPEN) {
-         // Kirim langsung via WebSocket
-         ws.send(JSON.stringify({
-             sender: 'USER',
-             message_type: 'TEXT',
-             content: text
-         }));
-         return;
+        ws.send(JSON.stringify({ sender: 'USER', message_type: 'TEXT', content: text }));
+        return;
       }
-      
+
+      // AI Chat mode
       messageCount++;
-      const loadingBubble = addMessage("Mohon ditunggu. Laporan Anda sedang dianalisis oleh IT Helpdesk...", false);
-      
+      btnSend.disabled = true;
+      const loading = addMessage('Mohon ditunggu, sedang dianalisis oleh AI...', 'ai');
+
       try {
         const response = await invoke('send_chat_message', { message: text });
-        loadingBubble.innerHTML = response.reply.replace(/\n/g, '<br>');
-        
-        if (response.ticket_id) {
-           currentTicketId = response.ticket_id;
+        loading.innerHTML = String(response.reply).replace(/\n/g, '<br>');
+
+        if (response.ticket_id && response.ticket_id !== '') {
+          currentTicketId = response.ticket_id;
         }
-        
-        // Logika Poin 4: Munculkan opsi Live Chat setelah interaksi ke-2
+
         if (messageCount >= 2) {
           addEscalationPrompt();
         }
-        
       } catch (e) {
-        loadingBubble.innerHTML = "❌ Gagal terhubung ke server. " + e;
+        loading.innerHTML = `❌ Gagal terhubung ke server: ${e}`;
+      } finally {
+        btnSend.disabled = false;
       }
     }
 
+    // ── Event Listeners ────────────────────────────────────────────
+    btnSend.addEventListener('click', sendMessage);
+
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault(); // Mencegah baris baru
+        e.preventDefault();
         sendMessage();
       }
     });
