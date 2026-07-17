@@ -83,13 +83,13 @@
 </head>
 <body>
   <div class="header" data-tauri-drag-region>
-    <div class="window-controls-left" style="position: absolute; left: 10px; top: 0; bottom: 0; display: flex; align-items: center; -webkit-app-region: no-drag;">
-      <button class="win-btn close" id="btn-close-ticket" style="display:none; border-color:#22c55e; color:#22c55e;" title="Selesai & Tutup Tiket">✔ Selesai</button>
-    </div>
+    <button class="win-btn close" id="btn-close-ticket" style="display:none; position: absolute; left: 15px; top: 12px; border-color:#22c55e; color:#22c55e; -webkit-app-region: no-drag; z-index: 99;" title="Selesai & Tutup Tiket">✔ Selesai</button>
+
     <span class="header-title" style="display: flex; align-items: center; justify-content: center; height: 100%;">
       <img src="./assets/logo.png" width="20" height="20" style="object-fit: contain; border-radius: 4px; margin-right: 6px; display: inline-block;"> 
       MKT IT Helpdesk
     </span>
+    
     <div class="window-controls" style="position: absolute; right: 10px; top: 0; bottom: 0; display: flex; align-items: center; gap: 4px; -webkit-app-region: no-drag;">
       <button class="win-btn" id="btn-minimize" title="Minimize">─</button>
       <button class="win-btn close" id="btn-close" title="Tutup">✕</button>
