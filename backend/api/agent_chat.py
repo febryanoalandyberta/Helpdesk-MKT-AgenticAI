@@ -63,6 +63,12 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
     )
     ticket = existing_q.scalar_one_or_none()
 
+    # If ticket exists but hasn't been updated for 2 hours, consider it expired and create a new one
+    if ticket:
+        from datetime import datetime, timedelta
+        if (datetime.utcnow() - ticket.updated_at) > timedelta(hours=2):
+            ticket = None
+
     if ticket:
         # Append the follow-up message to existing ticket description
         ticket.description = (ticket.description or "") + f"\n\n[Follow-up dari Kasir]: {data.message}"

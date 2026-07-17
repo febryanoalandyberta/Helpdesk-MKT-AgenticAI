@@ -1234,7 +1234,7 @@ async function deleteUser(userId, username) {
 let liveChatWs = null;
 let currentChatTicketId = null;
 
-function openLiveChat(ticketId) {
+async function openLiveChat(ticketId) {
   currentChatTicketId = ticketId;
   document.getElementById('ticketDetailModal').classList.remove('show');
   document.getElementById('modalOverlay').classList.add('show');
@@ -1245,8 +1245,19 @@ function openLiveChat(ticketId) {
   setTimeout(() => liveChatModal.classList.add('show'), 10);
   
   const chatBody = document.getElementById('liveChatBody');
-  chatBody.innerHTML = '<div class="loading-state">Menghubungkan ke ruangan chat...</div>';
+  chatBody.innerHTML = '<div class="loading-state">Memuat riwayat chat...</div>';
   
+  // Load history first
+  try {
+    const history = await apiFetch(`/api/chat/messages/${ticketId}`);
+    chatBody.innerHTML = '';
+    if (history && history.length > 0) {
+        history.forEach(msg => appendChatMessage(msg));
+    }
+  } catch (e) {
+    chatBody.innerHTML = '<div style="text-align:center; color:#ef4444; font-size:12px;">❌ Gagal memuat riwayat.</div>';
+  }
+
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${wsProtocol}//${window.location.host}/api/chat/ws/${ticketId}`;
   
@@ -1254,7 +1265,9 @@ function openLiveChat(ticketId) {
   liveChatWs = new WebSocket(wsUrl);
   
   liveChatWs.onopen = () => {
-    chatBody.innerHTML = '<div style="text-align:center; color:#22d3a0; font-size:12px; margin-bottom:10px;">✅ Terhubung ke Kasir</div>';
+    const div = document.createElement('div');
+    div.innerHTML = '<div style="text-align:center; color:#22d3a0; font-size:12px; margin-bottom:10px;">✅ Terhubung ke Kasir</div>';
+    chatBody.appendChild(div);
   };
   
   liveChatWs.onmessage = (event) => {
@@ -1302,6 +1315,16 @@ function appendChatMessage(data) {
   const timeLabel = new Date(data.timestamp || Date.now()).toLocaleTimeString('id-ID');
   
   let contentHtml = data.content.replace(/\n/g, '<br>');
+  
+  // Parse [Lampiran: ...] tag and render it nicely
+  const attachRegex = /\[Lampiran:\s*([^\]]+)\]/g;
+  contentHtml = contentHtml.replace(attachRegex, (match, url) => {
+    if (url.toLowerCase().match(/\.(png|jpe?g|gif)$/i)) {
+      return `<br><a href="${url}" target="_blank"><img src="${url}" style="max-width:200px; border-radius:4px; margin-top:5px;"/></a>`;
+    }
+    return `<br><a href="${url}" target="_blank" style="color: ${isAgent ? '#000' : '#fff'}; text-decoration: underline;">📄 Lampiran</a>`;
+  });
+
   if (data.message_type === 'FILE' && data.content.startsWith('/uploads/')) {
     contentHtml = `<a href="${data.content}" target="_blank"><img src="${data.content}" style="max-width:200px; border-radius:4px; margin-top:5px;"/></a>`;
   }

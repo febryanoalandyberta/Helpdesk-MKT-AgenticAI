@@ -100,8 +100,14 @@ app.include_router(tier1_router, prefix="/api/tier1", tags=["tier1"])
 app.include_router(zammad_router)
 app.include_router(agent_chat_router)
 
-# Serve frontend
+# Serve frontend and uploads
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
+uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+
+if not os.path.exists(uploads_dir):
+    os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+
 if os.path.exists(frontend_dir):
     app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
 
