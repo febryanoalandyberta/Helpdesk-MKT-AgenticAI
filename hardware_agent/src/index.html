@@ -27,11 +27,33 @@
     .win-btn:hover { background: #475569; color: #fff; }
     .win-btn.close:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
 
+    #btn-close-ticket {
+      position: absolute !important;
+      left: 15px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      border-color: #22c55e !important;
+      color: #22c55e !important;
+      -webkit-app-region: no-drag !important;
+      z-index: 99 !important;
+    }
+    #btn-close-ticket:hover {
+      background: #22c55e !important;
+      color: #fff !important;
+    }
+
     .chat-container {
       flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
     }
     .msg {
       max-width: 82%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; word-wrap: break-word;
+    }
+    .msg img {
+      max-width: 100% !important;
+      max-height: 250px !important;
+      object-fit: contain;
+      border-radius: 8px;
+      margin-top: 5px;
     }
     .msg-user { align-self: flex-end; background: #0ea5e9; color: #fff; border-bottom-right-radius: 3px; }
     .msg-ai   { align-self: flex-start; background: #1e293b; color: #e2e8f0; border-bottom-left-radius: 3px; border: 1px solid #334155; }
@@ -83,7 +105,7 @@
 </head>
 <body>
   <div class="header" data-tauri-drag-region>
-    <button class="win-btn close" id="btn-close-ticket" style="display:none; position: absolute; left: 15px; top: 12px; border-color:#22c55e; color:#22c55e; -webkit-app-region: no-drag; z-index: 99;" title="Selesai & Tutup Tiket">✔ Selesai</button>
+    <button class="win-btn close" id="btn-close-ticket" style="display:none;" title="Selesai & Tutup Tiket">✔ Selesai</button>
 
     <span class="header-title" style="display: flex; align-items: center; justify-content: center; height: 100%;">
       <img src="./assets/logo.png" width="20" height="20" style="object-fit: contain; border-radius: 4px; margin-right: 6px; display: inline-block;"> 
