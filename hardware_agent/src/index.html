@@ -82,15 +82,15 @@
   </style>
 </head>
 <body>
-  <div class="header" data-tauri-drag-region style="justify-content: space-between;">
-    <div class="window-controls-left" style="width: 80px; text-align: left; -webkit-app-region: no-drag; display: flex; align-items: center;">
+  <div class="header" data-tauri-drag-region>
+    <div class="window-controls-left" style="position: absolute; left: 10px; top: 0; bottom: 0; display: flex; align-items: center; -webkit-app-region: no-drag;">
       <button class="win-btn close" id="btn-close-ticket" style="display:none; border-color:#22c55e; color:#22c55e;" title="Selesai & Tutup Tiket">✔ Selesai</button>
     </div>
-    <span class="header-title" style="display: flex; align-items: center; justify-content: center; flex: 1;">
+    <span class="header-title" style="display: flex; align-items: center; justify-content: center; height: 100%;">
       <img src="./assets/logo.png" width="20" height="20" style="object-fit: contain; border-radius: 4px; margin-right: 6px; display: inline-block;"> 
       MKT IT Helpdesk
     </span>
-    <div class="window-controls" style="position: relative; right: 0; width: 80px; justify-content: flex-end; display: flex; gap: 4px; -webkit-app-region: no-drag; align-items: center;">
+    <div class="window-controls" style="position: absolute; right: 10px; top: 0; bottom: 0; display: flex; align-items: center; gap: 4px; -webkit-app-region: no-drag;">
       <button class="win-btn" id="btn-minimize" title="Minimize">─</button>
       <button class="win-btn close" id="btn-close" title="Tutup">✕</button>
     </div>
@@ -106,7 +106,7 @@
 
   <script>
     // ── Tauri v1 API ───────────────────────────────────────────────
-    const { invoke }           = window.__TAURI__.tauri;
+    const { invoke, convertFileSrc } = window.__TAURI__.tauri;
     const { appWindow }        = window.__TAURI__.window;
     const { open: openDialog } = window.__TAURI__.dialog;
 
@@ -294,9 +294,10 @@
         try {
             const uploadUrl = await invoke('upload_attachment', { filePath: attachmentPath, ticketId: currentTicketId });
             
-            // If it's an image, show preview locally
+            // If it's an image, show preview locally using convertFileSrc
             if (attachmentPath.toLowerCase().match(/\.(png|jpe?g|gif)$/i)) {
-               displayHtml += `<br><img src="http://10.20.0.193:8000${uploadUrl}" style="max-width: 200px; border-radius: 8px; margin-top: 5px;">`;
+               const localImgUrl = convertFileSrc(attachmentPath);
+               displayHtml += `<br><img src="${localImgUrl}" style="max-width: 200px; border-radius: 8px; margin-top: 5px;">`;
             } else {
                displayHtml += `<br><a href="http://10.20.0.193:8000${uploadUrl}" target="_blank" style="color: #fff; text-decoration: underline;">📄 Lampiran</a>`;
             }
