@@ -24,7 +24,7 @@ from api.telegram import router as telegram_router
 from api.tier1 import router as tier1_router
 from api.zammad_webhook import router as zammad_router, start_zammad_polling
 from api.agent_chat import router as agent_chat_router
-
+from api.history import router as history_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -99,6 +99,7 @@ app.include_router(telegram_router, prefix="/api/telegram", tags=["telegram"])
 app.include_router(tier1_router, prefix="/api/tier1", tags=["tier1"])
 app.include_router(zammad_router)
 app.include_router(agent_chat_router)
+app.include_router(history_router, prefix="/api/devices", tags=["history"])
 
 # Serve frontend and uploads
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
@@ -131,6 +132,20 @@ async def health_check():
         "version": "1.0.0",
         "env": settings.APP_ENV,
     }
+
+import httpx
+
+@app.get("/api/crewai-health")
+async def crewai_health_check():
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get("http://host.docker.internal:8002/api/health")
+            if resp.status_code == 200:
+                return {"status": "online"}
+            logger.error(f"[CrewAI Health] Status code: {resp.status_code}")
+    except Exception as e:
+        logger.error(f"[CrewAI Health] Failed to ping: {e}")
+    return {"status": "offline"}
 
 
 async def seed_initial_data():

@@ -7,20 +7,20 @@
   --bg-surface: #0f1628;
   --bg-card: #141c35;
   --bg-hover: #1a2545;
-  --border: rgba(99, 136, 255, 0.12);
-  --border-bright: rgba(99, 136, 255, 0.3);
+  --border: rgba(220, 38, 38, 0.15);
+  --border-bright: rgba(220, 38, 38, 0.35);
 
   --text-primary: #e8eeff;
   --text-secondary: #8892b0;
   --text-muted: #4a5568;
 
-  --accent: #6388ff;
-  --accent-glow: rgba(99, 136, 255, 0.3);
-  --accent2: #a855f7;
-  --success: #22d3a0;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #38bdf8;
+  --accent: #dc2626;
+  --accent-glow: rgba(220, 38, 38, 0.3);
+  --accent2: #991b1b;
+  --success: #94a3b8;
+  --warning: #991b1b;
+  --danger: #dc2626;
+  --info: #64748b;
 
   --sidebar-w: 240px;
   --topbar-h: 64px;
@@ -142,9 +142,9 @@ body {
 }
 
 .nav-item.active {
-  background: linear-gradient(135deg, rgba(99, 136, 255, .2), rgba(168, 85, 247, .1));
+  background: linear-gradient(135deg, rgba(220, 38, 38, .2), rgba(153, 27, 27, .1));
   color: var(--accent);
-  border: 1px solid rgba(99, 136, 255, .2);
+  border: 1px solid rgba(220, 38, 38, .2);
 }
 
 .nav-icon {
@@ -171,30 +171,43 @@ body {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: var(--success);
+  color: var(--text-secondary);
+}
+
+.agent-status.online {
+  color: #22c55e;
+}
+
+.agent-status.offline {
+  color: #ef4444;
 }
 
 .pulse-dot {
   width: 8px;
   height: 8px;
-  background: var(--success);
+  background: var(--text-secondary);
   border-radius: 50%;
-  animation: pulse 2s infinite;
 }
 
-@keyframes pulse {
+.agent-status.online .pulse-dot {
+  background: #22c55e;
+  animation: pulse-online 2s infinite;
+}
 
-  0%,
-  100% {
+.agent-status.offline .pulse-dot {
+  background: #ef4444;
+}
+
+@keyframes pulse-online {
+  0%, 100% {
     opacity: 1;
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(34, 211, 160, .4);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, .4);
   }
-
   50% {
     opacity: .8;
     transform: scale(1.1);
-    box-shadow: 0 0 0 6px rgba(34, 211, 160, 0);
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
   }
 }
 
@@ -371,23 +384,23 @@ body {
 }
 
 .kpi-orange::before {
-  background: linear-gradient(90deg, var(--warning), #fbbf24);
+  background: linear-gradient(90deg, var(--warning), #dc2626);
 }
 
 .kpi-green::before {
-  background: linear-gradient(90deg, var(--success), #34d399);
+  background: linear-gradient(90deg, var(--success), #cbd5e1);
 }
 
 .kpi-blue::before {
-  background: linear-gradient(90deg, var(--info), #60a5fa);
+  background: linear-gradient(90deg, var(--accent), #fca5a5);
 }
 
 .kpi-purple::before {
-  background: linear-gradient(90deg, var(--accent2), #c084fc);
+  background: linear-gradient(90deg, var(--accent2), #ef4444);
 }
 
 .kpi-teal::before {
-  background: linear-gradient(90deg, #14b8a6, #2dd4bf);
+  background: linear-gradient(90deg, #64748b, #94a3b8);
 }
 
 .kpi-card:hover {
@@ -451,10 +464,10 @@ body {
 .chart-badge {
   font-size: 11px;
   padding: 3px 10px;
-  background: rgba(99, 136, 255, .15);
+  background: rgba(220, 38, 38, .15);
   color: var(--accent);
   border-radius: 20px;
-  border: 1px solid rgba(99, 136, 255, .2);
+  border: 1px solid rgba(220, 38, 38, .2);
 }
 
 /* ─── SECTION HEADER ─────────────────────── */
@@ -599,42 +612,42 @@ body {
 }
 
 .badge-critical {
-  background: rgba(239, 68, 68, .15);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, .3);
+  background: rgba(220, 38, 38, .15);
+  color: var(--danger);
+  border: 1px solid rgba(220, 38, 38, .3);
 }
 
 .badge-high {
-  background: rgba(245, 158, 11, .15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, .3);
+  background: rgba(217, 119, 6, .15);
+  color: var(--warning);
+  border: 1px solid rgba(217, 119, 6, .3);
 }
 
 .badge-medium {
-  background: rgba(99, 136, 255, .15);
-  color: var(--accent);
-  border: 1px solid rgba(99, 136, 255, .3);
+  background: rgba(2, 132, 199, .15);
+  color: var(--info);
+  border: 1px solid rgba(2, 132, 199, .3);
 }
 
 .badge-low {
-  background: rgba(34, 211, 160, .15);
+  background: rgba(22, 163, 74, .15);
   color: var(--success);
-  border: 1px solid rgba(34, 211, 160, .3);
+  border: 1px solid rgba(22, 163, 74, .3);
 }
 
 .badge-new {
-  background: rgba(99, 136, 255, .15);
-  color: var(--accent);
+  background: rgba(220, 38, 38, .15);
+  color: var(--danger);
 }
 
 .badge-resolved {
-  background: rgba(34, 211, 160, .15);
+  background: rgba(22, 163, 74, .15);
   color: var(--success);
 }
 
 .badge-escalated {
-  background: rgba(239, 68, 68, .15);
-  color: #f87171;
+  background: rgba(220, 38, 38, .15);
+  color: var(--danger);
 }
 
 .badge-waiting {
@@ -724,7 +737,7 @@ body {
 .btn-ghost:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(99, 136, 255, .05);
+  background: rgba(220, 38, 38, .05);
 }
 
 .btn-sm {
@@ -753,9 +766,9 @@ body {
 }
 
 .btn-info {
-  background: rgba(99, 136, 255, .15);
+  background: rgba(220, 38, 38, .15);
   color: var(--accent);
-  border: 1px solid rgba(99, 136, 255, .3);
+  border: 1px solid rgba(220, 38, 38, .3);
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 11px;
@@ -819,7 +832,7 @@ body {
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(99, 136, 255, .2), rgba(168, 85, 247, .2));
+  background: linear-gradient(135deg, rgba(220, 38, 38, .2), rgba(168, 85, 247, .2));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1130,7 +1143,7 @@ body {
   top: 56px;
   width: 2px;
   height: calc(100% - 16px);
-  background: linear-gradient(to bottom, var(--accent), rgba(99, 136, 255, 0.1));
+  background: linear-gradient(to bottom, var(--accent), rgba(220, 38, 38, 0.1));
 }
 
 .step-num {
@@ -1270,7 +1283,7 @@ body {
 }
 
 .diag-info {
-  background: rgba(99, 136, 255, .15);
+  background: rgba(220, 38, 38, .15);
   color: var(--accent);
 }
 
@@ -1324,7 +1337,7 @@ body {
 .flow-node.active {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(99, 136, 255, .1);
+  background: rgba(220, 38, 38, .1);
 }
 
 .flow-arrow {
@@ -1490,7 +1503,7 @@ body {
 
 /* ROLE BADGES */
 .badge-super-admin {
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  background: linear-gradient(135deg, var(--danger), #fff);
   color: #fff;
 }
 

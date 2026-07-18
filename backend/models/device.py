@@ -82,9 +82,30 @@ class Device(Base):
         return f"<Device {self.device_name} ({self.device_type}) @ {self.ip_address}>"
 
     def to_dict(self):
+        now = datetime.utcnow()
+        current_status = self.status
+        
+        # 1. Evaluate Network Status based on the MOST RECENT activity (Ping or Telemetry)
+        timestamps = [t for t in (self.last_health_check, self.last_seen) if t is not None]
+        if timestamps:
+            most_recent = max(timestamps)
+            if (now - most_recent).total_seconds() > 60:
+                current_status = DeviceStatus.OFFLINE
+            elif self.status == DeviceStatus.OFFLINE and (now - most_recent).total_seconds() <= 60:
+                # If ping succeeded, it was marked ONLINE in DB, so this just honors it.
+                current_status = DeviceStatus.ONLINE
+        else:
+            current_status = DeviceStatus.OFFLINE
+
+        # 2. Check if the AGENT is alive. If Agent hasn't sent data for 60s, telemetry is STALE.
+        agent_alive = False
+        if self.last_health_check and (now - self.last_health_check).total_seconds() <= 60:
+            agent_alive = True
+
         return {
             "device_id": str(self.device_id),
             "site_id": str(self.site_id) if self.site_id else None,
+            "site_name": self.site.site_name if getattr(self, "site", None) else None,
             "device_name": self.device_name,
             "device_type": self.device_type,
             "ip_address": self.ip_address,
@@ -93,17 +114,17 @@ class Device(Base):
             "operating_system": self.operating_system,
             "os_version": self.os_version,
             "hardware_model": self.hardware_model,
-            "cpu_usage": self.cpu_usage,
-            "ram_usage": self.ram_usage,
-            "disk_usage": self.disk_usage,
-            "disk_total_gb": self.disk_total_gb,
-            "disk_free_gb": self.disk_free_gb,
-            "temperature": self.temperature,
-            "current_active_app": self.current_active_app,
-            "current_active_url": self.current_active_url,
+            "cpu_usage": self.cpu_usage if agent_alive else None,
+            "ram_usage": self.ram_usage if agent_alive else None,
+            "disk_usage": self.disk_usage if agent_alive else None,
+            "disk_total_gb": self.disk_total_gb if agent_alive else None,
+            "disk_free_gb": self.disk_free_gb if agent_alive else None,
+            "temperature": self.temperature if agent_alive else None,
+            "current_active_app": self.current_active_app if agent_alive else None,
+            "current_active_url": self.current_active_url if agent_alive else None,
             "last_health_check": self.last_health_check.isoformat() if self.last_health_check else None,
             "ssh_port": self.ssh_port,
-            "status": self.status,
+            "status": current_status,
             "is_active": self.is_active,
             "last_ping": self.last_ping.isoformat() if self.last_ping else None,
             "last_seen": self.last_seen.isoformat() if self.last_seen else None,

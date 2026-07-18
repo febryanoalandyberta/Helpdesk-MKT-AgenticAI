@@ -62,14 +62,20 @@ async def list_devices(
     status: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Device).where(Device.is_active == True)
+    from models.site import Site
+    from sqlalchemy.orm import joinedload
+    
+    query = select(Device).options(joinedload(Device.site)).outerjoin(Site, Device.site_id == Site.site_id).where(Device.is_active == True)
+    
     if site_id:
         query = query.where(Device.site_id == site_id)
     if device_type:
         query = query.where(Device.device_type == device_type.upper())
     if status:
         query = query.where(Device.status == status.upper())
-    q = await db.execute(query.order_by(Device.device_name))
+        
+    query = query.order_by(Site.site_name.asc().nulls_last(), Device.device_name.asc())
+    q = await db.execute(query)
     devices = q.scalars().all()
     return {"devices": [d.to_dict() for d in devices], "total": len(devices)}
 
@@ -156,6 +162,18 @@ async def receive_telemetry(
 
     device.status = DeviceStatus.ONLINE
     device.last_seen = datetime.utcnow()
+    
+    # --- DITAMBAHKAN: Insert ke tabel History ---
+    from models.telemetry_history import TelemetryLog
+    telemetry_log = TelemetryLog(
+        device_id=device_id,
+        cpu_usage=data.cpu_usage,
+        ram_usage=data.ram_usage,
+        temperature=data.temperature,
+        active_app=data.current_active_app,
+        active_url=data.current_active_url,
+    )
+    db.add(telemetry_log)
     
     await db.commit()
     return {"message": "Telemetry updated"}
@@ -266,6 +284,7 @@ class UpdateDeviceRequest(BaseModel):
     device_type: Optional[str] = None
     ip_address: Optional[str] = None
     operating_system: Optional[str] = None
+    site_id: Optional[str] = None
 
 @router.put("/{device_id}")
 async def update_device(
@@ -273,6 +292,9 @@ async def update_device(
     data: UpdateDeviceRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    from models.site import Site
+    import uuid
+
     q = await db.execute(select(Device).where(Device.device_id == device_id))
     device = q.scalar_one_or_none()
     if not device:
@@ -286,6 +308,27 @@ async def update_device(
         device.ip_address = data.ip_address
     if data.operating_system is not None:
         device.operating_system = data.operating_system
+
+    # Handle site_id updates
+    if data.site_id is not None:
+        actual_site_id = None
+        try:
+            val = uuid.UUID(data.site_id)
+            sq = await db.execute(select(Site).where(Site.site_id == val))
+            if sq.scalar_one_or_none():
+                actual_site_id = val
+        except ValueError:
+            pass
+
+        if not actual_site_id:
+            sq = await db.execute(select(Site).where(Site.site_name.ilike(f"%{data.site_id}%")))
+            site = sq.scalars().first()
+            if site:
+                actual_site_id = site.site_id
+            else:
+                raise HTTPException(status_code=400, detail=f"Site '{data.site_id}' tidak ditemukan.")
+        
+        device.site_id = actual_site_id
 
     device.updated_at = datetime.utcnow()
     await db.commit()

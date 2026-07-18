@@ -47,6 +47,20 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
     from models.site import Site
     sq = await db.execute(select(Site).where(Site.site_id == device.site_id))
     site_obj = sq.scalar_one_or_none()
+    
+    # Auto-detect Site from chat message if not assigned yet
+    if not site_obj:
+        sites_q = await db.execute(select(Site))
+        all_sites_sorted = sorted(sites_q.scalars().all(), key=lambda s: len(s.site_name), reverse=True)
+        for s in all_sites_sorted:
+            if s.site_name.lower() in data.message.lower():
+                site_obj = s
+                # Permanently link this device to the newly detected site
+                device.site_id = s.site_id
+                db.add(device)
+                await db.commit()
+                break
+
     site_name = site_obj.site_name if site_obj else "Unknown Site"
 
     # 3. Find existing ACTIVE ticket for this device (NEW, TIER0, TIER1, ESCALATED)

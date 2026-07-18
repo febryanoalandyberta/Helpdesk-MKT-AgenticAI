@@ -229,6 +229,26 @@ async def zammad_webhook(
         else:
             reporter_name = "Pelanggan"
 
+    # Auto-detect Site ID from title or description
+    from models.site import Site
+    from sqlalchemy import select
+    matched_site_id = None
+    
+    # Query all sites from DB
+    sites_q = await db.execute(select(Site))
+    all_sites = sites_q.scalars().all()
+    
+    combined_text = (ticket_data.get("title", "") + " " + description).lower()
+    
+    # Simple substring matching, prioritize longer site names if possible
+    # We sort by length descending to match "Sam's Studio's Bali" before "Bali" if there was a collision
+    all_sites_sorted = sorted(all_sites, key=lambda s: len(s.site_name), reverse=True)
+    
+    for s in all_sites_sorted:
+        if s.site_name.lower() in combined_text:
+            matched_site_id = s.site_id
+            break
+
     ticket = Ticket(
         zammad_ticket_id=zammad_id,
         title=ticket_data.get("title", "Untitled Ticket"),
@@ -236,6 +256,7 @@ async def zammad_webhook(
         reporter_name=reporter_name,
         severity=parse_zammad_priority(ticket_data),
         status=TicketStatus.NEW,
+        site_id=matched_site_id,
     )
     db.add(ticket)
     await db.commit()

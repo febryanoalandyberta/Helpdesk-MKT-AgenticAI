@@ -37,6 +37,36 @@ function showDashboard() {
   initClock();
   loadDashboard();
   setInterval(loadDashboard, 30000);
+  pollCrewAIStatus();
+  setInterval(pollCrewAIStatus, 15000);
+}
+
+async function pollCrewAIStatus() {
+  const indicator = document.getElementById('crewaiIndicator');
+  const text = document.getElementById('crewaiIndicatorText');
+  if (!indicator || !text) return;
+
+  try {
+    // Bypass backend proxy, ping CrewAI container directly on port 8002
+    const crewaiUrl = window.location.protocol + "//" + window.location.hostname + ":8002/api/health";
+    const res = await fetch(`${crewaiUrl}?_t=${Date.now()}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'online') {
+        indicator.classList.remove('offline');
+        indicator.classList.add('online');
+        text.textContent = 'CrewAI Online';
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn("CrewAI status check failed", e);
+  }
+  
+  // Default to offline if error or not online
+  indicator.classList.remove('online');
+  indicator.classList.add('offline');
+  text.textContent = 'CrewAI Offline';
 }
 
 function updateUserUI() {
@@ -159,7 +189,9 @@ function initClock() {
   const el = document.getElementById('topbarTime');
   const update = () => {
     const now = new Date();
-    el.textContent = now.toLocaleString('id-ID', { weekday:'short', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    const datePart = now.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    const timePart = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
+    el.textContent = `${datePart} - ${timePart}`;
   };
   update(); setInterval(update, 1000);
   
@@ -251,78 +283,12 @@ async function loadDashboard() {
     document.getElementById('badge-open').textContent = overview.open_tickets ?? 0;
   }
 
-  if (trend) renderConfidenceChart(trend.data || []);
-  if (severity) renderSeverityChart(severity.data || []);
-  if (category) renderCategoryChart(category.data || []);
+
   if (siteHealth) renderSiteGrid(siteHealth.sites || []);
   if (recent) renderRecentTickets(recent.tickets || []);
 }
 
-// ─── CHARTS ───────────────────────────────────
-function renderConfidenceChart(data) {
-  const ctx = document.getElementById('confidenceChart').getContext('2d');
-  if (charts.confidence) charts.confidence.destroy();
-  charts.confidence = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: data.map(d => d.date),
-      datasets: [{
-        label: 'Avg Confidence %',
-        data: data.map(d => d.avg_confidence),
-        borderColor: '#6388ff',
-        backgroundColor: 'rgba(99,136,255,0.15)',
-        tension: 0.4, fill: true, pointBackgroundColor: '#6388ff', pointRadius: 4,
-      }, {
-        label: 'Total Tiket',
-        data: data.map(d => d.total_tickets),
-        borderColor: '#22d3a0',
-        backgroundColor: 'rgba(34,211,160,0.1)',
-        tension: 0.4, fill: false, pointBackgroundColor: '#22d3a0', pointRadius: 3, yAxisID: 'y2',
-      }]
-    },
-    options: chartOpts({ y: { min: 0, max: 100, ticks: { callback: v => v + '%' } }, y2: { position: 'right', min: 0, grid: { drawOnChartArea: false } } })
-  });
-}
 
-function renderSeverityChart(data) {
-  const ctx = document.getElementById('severityChart').getContext('2d');
-  if (charts.severity) charts.severity.destroy();
-  const colors = { CRITICAL: '#ef4444', HIGH: '#f59e0b', MEDIUM: '#6388ff', LOW: '#22d3a0' };
-  charts.severity = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: data.map(d => d.severity),
-      datasets: [{ data: data.map(d => d.count), backgroundColor: data.map(d => colors[d.severity] || '#6b7280'), borderWidth: 2, borderColor: '#141c35' }]
-    },
-    options: { ...chartOpts(), cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#8892b0', font: { size: 11 } } } } }
-  });
-}
-
-function renderCategoryChart(data) {
-  const ctx = document.getElementById('categoryChart').getContext('2d');
-  if (charts.category) charts.category.destroy();
-  charts.category = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: data.map(d => d.category),
-      datasets: [{ data: data.map(d => d.count), backgroundColor: 'rgba(99,136,255,0.7)', borderRadius: 6, borderSkipped: false }]
-    },
-    options: { ...chartOpts(), indexAxis: 'y', plugins: { legend: { display: false } } }
-  });
-}
-
-function chartOpts(scales = {}) {
-  const base = {
-    responsive: true, maintainAspectRatio: true,
-    plugins: { legend: { labels: { color: '#8892b0', font: { size: 11 } } } },
-    scales: {
-      x: { ticks: { color: '#8892b0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-      y: { ticks: { color: '#8892b0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-      ...scales
-    }
-  };
-  return base;
-}
 
 // ─── SITE GRID ────────────────────────────────
 function renderSiteGrid(sites) {
@@ -331,7 +297,7 @@ function renderSiteGrid(sites) {
   grid.innerHTML = sites.map(s => {
     const pct = s.health_pct || 0;
     const cls = pct >= 75 ? 'health-ok' : pct >= 50 ? 'health-warn' : 'health-bad';
-    const color = pct >= 75 ? '#22d3a0' : pct >= 50 ? '#f59e0b' : '#ef4444';
+    const color = pct >= 75 ? '#94a3b8' : pct >= 50 ? '#991b1b' : '#dc2626';
     return `<div class="site-card ${cls}">
       <div class="site-card-top">
         <div><div class="site-name">${s.site_name}</div><div class="site-city">📍 ${s.city}</div></div>
@@ -353,7 +319,7 @@ function renderRecentTickets(tickets) {
   if (!tickets.length) { tbody.innerHTML = '<tr><td colspan="7" class="loading-state">Belum ada tiket.</td></tr>'; return; }
   tbody.innerHTML = tickets.map(t => `
     <tr style="cursor:pointer" onclick="openTicketDetail('${t.ticket_id}')">
-      <td><code style="color:#6388ff">#${t.zammad_ticket_id || t.ticket_id.slice(0,8)}</code></td>
+      <td><code style="color:#dc2626">#${t.zammad_ticket_id || t.ticket_id.slice(0,8)}</code></td>
       <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</td>
       <td>${t.site_id ? '📍 Site' : '—'}</td>
       <td>${severityBadge(t.severity)}</td>
@@ -375,7 +341,7 @@ async function loadTickets() {
   if (!data?.tickets?.length) { tbody.innerHTML = '<tr><td colspan="9" class="loading-state">Tidak ada tiket.</td></tr>'; return; }
   tbody.innerHTML = data.tickets.map(t => `
     <tr style="cursor:pointer" onclick="openTicketDetail('${t.ticket_id}')">
-      <td><code style="color:#6388ff">#${t.zammad_ticket_id || t.ticket_id.slice(0,8)}</code></td>
+      <td><code style="color:#dc2626">#${t.zammad_ticket_id || t.ticket_id.slice(0,8)}</code></td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</td>
       <td>—</td>
       <td>${severityBadge(t.severity)}</td>
@@ -385,7 +351,7 @@ async function loadTickets() {
       <td style="color:#8892b0;font-size:11px">${timeAgo(t.created_at)}</td>
       <td>
         <button class="btn-info" onclick="event.stopPropagation();triggerAIForTicket('${t.ticket_id}')">🤖 AI</button>
-        ${t.live_chat_requested ? `<button class="btn-primary" style="background:#ef4444; border:none; margin-left:4px" onclick="event.stopPropagation();openLiveChat('${t.ticket_id}')">💬 Chat</button>` : ''}
+        ${t.live_chat_requested ? `<button class="btn-primary" style="background:#dc2626; border:none; margin-left:4px" onclick="event.stopPropagation();openLiveChat('${t.ticket_id}')">💬 Chat</button>` : ''}
       </td>
     </tr>`).join('');
 }
@@ -516,8 +482,13 @@ async function loadDevices() {
         <strong>${d.device_name}</strong>
         <div style="font-size:10px; color:#8892b0; font-family:monospace; margin-top:4px;">ID: ${d.device_id}</div>
       </td>
+      <td>
+        <span style="color:${d.site_name ? '#8892b0' : '#dc2626'}; font-size:12px;">
+          📍 ${d.site_name || 'Tanpa Site'}
+        </span>
+      </td>
       <td><span class="badge badge-medium">${d.device_type}</span></td>
-      <td><code style="color:#22d3a0">${d.ip_address || '—'}</code></td>
+      <td><code style="color:#94a3b8">${d.ip_address || '—'}</code></td>
       <td style="color:#8892b0">${d.operating_system || '—'} ${d.os_version || ''}</td>
       <td>
         <div style="font-size:11px; margin-bottom:4px">CPU: <strong>${d.status === 'OFFLINE' ? '—' : (d.cpu_usage ? d.cpu_usage.toFixed(1) + '%' : '—')}</strong></div>
@@ -527,14 +498,15 @@ async function loadDevices() {
       </td>
       <td>
         <div style="font-size:11px; margin-bottom:4px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.current_active_app || ''}">App: <span style="color:#a855f7">${d.status === 'OFFLINE' ? '—' : (d.current_active_app || '—')}</span></div>
-        <div style="font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.current_active_url || ''}">URL: <a href="${d.current_active_url || '#'}" target="_blank" style="color:#38bdf8; text-decoration:none;">${d.status === 'OFFLINE' ? '—' : (d.current_active_url || '—')}</a></div>
+        <div style="font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.current_active_url || ''}">URL: <span style="color:#dc2626;">${d.status === 'OFFLINE' ? '—' : (d.current_active_url || '—')}</span></div>
       </td>
       <td>${deviceStatusBadge(d.status)}</td>
       <td style="color:#8892b0;font-size:11px">${d.last_health_check ? timeAgo(d.last_health_check) : (d.last_ping ? timeAgo(d.last_ping) : '—')}</td>
       <td>
         <button class="btn-success" style="margin-right:4px; margin-bottom:4px;" onclick="pingDevice('${d.device_id}', '${d.ip_address || ''}', this)">📡 Ping</button>
-        <button class="btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="showEditDeviceModal('${d.device_id}', '${d.device_name}', '${d.device_type}', '${d.ip_address || ''}', '${d.operating_system || ''}')">✏️</button>
-        <button class="btn-danger" style="margin-bottom:4px;" onclick="deleteDevice('${d.device_id}', '${d.device_name}')">🗑️</button>
+        <button class="btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="openHistoryModal('${d.device_id}', '${d.device_name.replace(/'/g, "\\'")}')">📜 Log</button>
+        <button class="btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="showEditDeviceModal('${d.device_id}', '${d.site_id || ''}', '${d.device_type}')">✏️</button>
+        <button class="btn-danger" style="margin-bottom:4px;" onclick="deleteDevice('${d.device_id}', '${d.device_name.replace(/'/g, "\\'")}')">🗑️</button>
       </td>
     </tr>`).join('');
 }
@@ -607,6 +579,24 @@ async function pingDevice(deviceId, ipAddress, btn) {
 // ─── DEVICE CRUD ─────────────────────────────
 let editingDeviceId = null;
 
+async function populateSiteDropdowns(selectedSiteId = null, targetSelectId = 'addDeviceSiteId') {
+  const selectEl = document.getElementById(targetSelectId);
+  if (!selectEl) return;
+  selectEl.innerHTML = '<option value="">Memuat daftar site...</option>';
+  try {
+    const data = await apiFetch('/api/sites/');
+    if (data?.sites?.length) {
+      selectEl.innerHTML = '<option value="">-- Pilih Site --</option>' + data.sites.map(s => 
+        `<option value="${s.site_id}" ${s.site_id === selectedSiteId ? 'selected' : ''}>${s.site_name}</option>`
+      ).join('');
+    } else {
+      selectEl.innerHTML = '<option value="">Belum ada Site terdaftar</option>';
+    }
+  } catch(e) {
+    selectEl.innerHTML = '<option value="">Gagal memuat site</option>';
+  }
+}
+
 function showNewDeviceModal() {
   document.getElementById('addDeviceSiteId').value = '';
   document.getElementById('addDeviceName').value = '';
@@ -614,16 +604,15 @@ function showNewDeviceModal() {
   document.getElementById('addDeviceIp').value = '';
   document.getElementById('addDeviceOs').value = '';
   
+  populateSiteDropdowns(null, 'addDeviceSiteId');
   document.getElementById('newDeviceModal').classList.add('show');
   document.getElementById('modalOverlay').classList.add('show');
 }
 
-function showEditDeviceModal(id, name, type, ip, os) {
+function showEditDeviceModal(id, site_id, type) {
   editingDeviceId = id;
-  document.getElementById('editDeviceName').value = name;
-  document.getElementById('editDeviceType').value = type;
-  document.getElementById('editDeviceIp').value = ip;
-  document.getElementById('editDeviceOs').value = os;
+  populateSiteDropdowns(site_id, 'editDeviceSiteId');
+  document.getElementById('editDeviceType').value = type || 'POS_TICKETING';
   
   document.getElementById('editDeviceModal').classList.add('show');
   document.getElementById('modalOverlay').classList.add('show');
@@ -661,14 +650,12 @@ async function submitNewDevice() {
 
 async function submitEditDevice() {
   if (!editingDeviceId) return;
-  const device_name = document.getElementById('editDeviceName').value;
+  const site_id = document.getElementById('editDeviceSiteId').value;
   const device_type = document.getElementById('editDeviceType').value;
-  const ip_address = document.getElementById('editDeviceIp').value;
-  const operating_system = document.getElementById('editDeviceOs').value;
 
   const res = await apiFetch(`/api/devices/${editingDeviceId}`, {
     method: 'PUT',
-    body: JSON.stringify({ device_name, device_type, ip_address, operating_system }),
+    body: JSON.stringify({ site_id, device_type }),
   });
 
   if (res?.device_id) {
@@ -723,7 +710,7 @@ async function loadAuditLogs() {
     <tr>
       <td style="font-size:11px;color:#8892b0;white-space:nowrap">${formatLocalTime(l.created_at)}</td>
       <td><code style="color:#a855f7">${l.actor}</code></td>
-      <td><code style="color:#6388ff">${l.action}</code></td>
+      <td><code style="color:#dc2626">${l.action}</code></td>
       <td style="color:#8892b0">${l.target || '—'}</td>
       <td>${resultBadge(l.result)}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8892b0;font-size:11px">${l.detail || '—'}</td>
@@ -741,7 +728,7 @@ async function openTicketDetail(ticketId) {
     <div class="detail-section">
       <h4>Informasi Tiket</h4>
       <div class="detail-grid">
-        <div class="detail-item"><label>ID</label><span><code style="color:#6388ff">#${t.zammad_ticket_id || t.ticket_id.slice(0,8)}</code></span></div>
+        <div class="detail-item"><label>ID</label><span><code style="color:#dc2626">#${t.zammad_ticket_id || t.ticket_id.slice(0,8)}</code></span></div>
         <div class="detail-item"><label>Status</label><span>${statusBadge(t.status)}</span></div>
         <div class="detail-item"><label>Severity</label><span>${severityBadge(t.severity)}</span></div>
         <div class="detail-item"><label>Kategori</label><span>${t.category || '—'}</span></div>
@@ -757,22 +744,22 @@ async function openTicketDetail(ticketId) {
       <h4>Analisis AI — Tier ${t.tier_level}</h4>
       <div class="detail-grid" style="margin-bottom:10px">
         <div class="detail-item"><label>Confidence Score</label><span>${confBar(t.confidence_score)}</span></div>
-        <div class="detail-item"><label>SOP Reference</label><span style="color:#22d3a0">${t.sop_reference || '—'}</span></div>
+        <div class="detail-item"><label>SOP Reference</label><span style="color:#94a3b8">${t.sop_reference || '—'}</span></div>
         <div class="detail-item"><label>Eskalasi</label><span>${t.escalated ? '✅ Ya' : '❌ Tidak'}</span></div>
-        <div class="detail-item"><label>SLA Breached</label><span style="color:${t.sla_breached ? '#ef4444' : '#22d3a0'}">${t.sla_breached ? '⚠️ Ya' : '✅ Tidak'}</span></div>
+        <div class="detail-item"><label>SLA Breached</label><span style="color:${t.sla_breached ? '#dc2626' : '#94a3b8'}">${t.sla_breached ? '⚠️ Ya' : '✅ Tidak'}</span></div>
       </div>
       <div class="detail-text" style="margin-bottom:8px">${t.ai_analysis || 'Belum dianalisis AI.'}</div>
     </div>
     ${t.ai_recommendation ? `<div class="detail-section">
       <h4>Rekomendasi AI</h4>
-      <div class="detail-text" style="border-left:3px solid #22d3a0">${t.ai_recommendation}</div>
+      <div class="detail-text" style="border-left:3px solid #94a3b8">${t.ai_recommendation}</div>
     </div>` : ''}
     ${t.resolution ? `<div class="detail-section">
       <h4>Resolusi</h4>
-      <div class="detail-text" style="border-left:3px solid #6388ff">${t.resolution}</div>
+      <div class="detail-text" style="border-left:3px solid #dc2626">${t.resolution}</div>
     </div>` : ''}
     ${t.live_chat_requested ? `<div class="detail-section" style="margin-top:15px">
-      <button class="btn-primary" style="width:100%; background:#ef4444; border:none; padding:12px; font-size:14px;" onclick="openLiveChat('${t.ticket_id}')">💬 Buka Live Chat</button>
+      <button class="btn-primary" style="width:100%; background:#dc2626; border:none; padding:12px; font-size:14px;" onclick="openLiveChat('${t.ticket_id}')">💬 Buka Live Chat</button>
     </div>` : ''}`;
 
   document.getElementById('modalOverlay').classList.add('show');
@@ -887,7 +874,7 @@ function resultBadge(r) {
 
 function confBar(score) {
   const pct = Math.round(score || 0);
-  const color = pct >= 85 ? '#22d3a0' : pct >= 60 ? '#f59e0b' : '#ef4444';
+  const color = pct >= 85 ? '#94a3b8' : pct >= 60 ? '#991b1b' : '#dc2626';
   return `<div class="conf-bar">
     <div class="conf-track"><div class="conf-fill" style="width:${pct}%;background:${color}"></div></div>
     <span class="conf-label" style="color:${color}">${pct}%</span>
@@ -984,7 +971,7 @@ async function loadTelegramLogs() {
   tbody.innerHTML = data.logs.map(l => `
     <tr>
       <td style="font-size:11px;color:#8892b0;white-space:nowrap">${l.sent_at.replace('T',' ').slice(0,16)}</td>
-      <td><code style="color:#6388ff">#${l.ticket_id}</code></td>
+      <td><code style="color:#dc2626">#${l.ticket_id}</code></td>
       <td>${l.site_name}</td>
       <td><code style="font-size:11px;color:#a855f7">${l.telegram_group}</code></td>
       <td>${severityBadge(l.severity)}</td>
@@ -1016,7 +1003,7 @@ async function loadZammadStatus() {
         <span class="flow-node">📚 Knowledge DB</span>
       </div>
       <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">
-        <strong>Webhook URL:</strong> <code style="color:#22d3a0">${data.webhook_url}</code>
+        <strong>Webhook URL:</strong> <code style="color:#94a3b8">${data.webhook_url}</code>
         &nbsp;&nbsp;<strong>Polling:</strong> setiap ${data.polling_interval_seconds || 30}s
       </div>
       ${data.setup_guide ? `
@@ -1032,7 +1019,7 @@ async function simulateZammadWebhook() {
   const el = document.getElementById('webhookResult');
   if (res) {
     el.innerHTML = `<div style="background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.3);border-radius:8px;padding:12px;font-size:13px">
-      ✅ <strong>Webhook diterima!</strong> Tiket baru dibuat dengan ID <code style="color:#6388ff">${res.ticket_id?.slice(0,8)}...</code>
+      ✅ <strong>Webhook diterima!</strong> Tiket baru dibuat dengan ID <code style="color:#dc2626">${res.ticket_id?.slice(0,8)}...</code>
       dan dikirim ke AI Tier ${res.ai_tier}.
     </div>`;
     showToast('✅ Simulasi webhook berhasil!', 'success');
@@ -1255,7 +1242,7 @@ async function openLiveChat(ticketId) {
         history.forEach(msg => appendChatMessage(msg));
     }
   } catch (e) {
-    chatBody.innerHTML = '<div style="text-align:center; color:#ef4444; font-size:12px;">❌ Gagal memuat riwayat.</div>';
+    chatBody.innerHTML = '<div style="text-align:center; color:#dc2626; font-size:12px;">❌ Gagal memuat riwayat.</div>';
   }
 
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -1266,7 +1253,7 @@ async function openLiveChat(ticketId) {
   
   liveChatWs.onopen = () => {
     const div = document.createElement('div');
-    div.innerHTML = '<div style="text-align:center; color:#22d3a0; font-size:12px; margin-bottom:10px;">✅ Terhubung ke Kasir</div>';
+    div.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:12px; margin-bottom:10px;">✅ Terhubung ke Kasir</div>';
     chatBody.appendChild(div);
   };
   
@@ -1276,7 +1263,7 @@ async function openLiveChat(ticketId) {
   };
   
   liveChatWs.onerror = (error) => {
-    chatBody.innerHTML += '<div style="text-align:center; color:#ef4444; font-size:12px;">❌ Koneksi terputus.</div>';
+    chatBody.innerHTML += '<div style="text-align:center; color:#dc2626; font-size:12px;">❌ Koneksi terputus.</div>';
   };
   
   liveChatWs.onclose = () => {
@@ -1307,7 +1294,7 @@ function appendChatMessage(data) {
   div.style.maxWidth = '80%';
   div.style.wordWrap = 'break-word';
   div.style.alignSelf = isAgent ? 'flex-end' : 'flex-start';
-  div.style.background = isAgent ? '#38bdf8' : '#1e293b';
+  div.style.background = isAgent ? '#dc2626' : '#1e293b';
   div.style.color = isAgent ? '#000' : '#fff';
   div.style.border = isAgent ? 'none' : '1px solid #334155';
   
@@ -1358,4 +1345,94 @@ function downloadChatPdf() {
   if (!currentChatTicketId) return;
   showToast('Mempersiapkan PDF...', 'info');
   window.open(`${API}/api/chat/export-pdf/${currentChatTicketId}`, '_blank');
+}
+
+// ─── TELEMETRY HISTORY LOG ──────────────────
+let currentHistoryDeviceId = null;
+let currentHistoryPage = 1;
+
+function openHistoryModal(deviceId, deviceName) {
+  currentHistoryDeviceId = deviceId;
+  currentHistoryPage = 1;
+  document.getElementById('historyModalTitle').innerText = `📜 Telemetry Log History - ${deviceName}`;
+  
+  // Set default date to today if empty
+  const dp = document.getElementById('historyDatePicker');
+  if (!dp.value) {
+    dp.value = new Date().toISOString().split('T')[0];
+  }
+  
+  document.getElementById('modalOverlay').classList.add('show');
+  const historyModal = document.getElementById('historyModal');
+  historyModal.style.display = 'flex';
+  setTimeout(() => historyModal.classList.add('show'), 10);
+  
+  fetchDeviceHistory();
+}
+
+function closeHistoryModal() {
+  const historyModal = document.getElementById('historyModal');
+  historyModal.classList.remove('show');
+  setTimeout(() => historyModal.style.display = 'none', 300);
+  document.getElementById('modalOverlay').classList.remove('show');
+  currentHistoryDeviceId = null;
+}
+
+async function fetchDeviceHistory() {
+  if (!currentHistoryDeviceId) return;
+  const date = document.getElementById('historyDatePicker').value;
+  const limit = 100;
+  
+  try {
+    const res = await fetch(`${API}/api/devices/${currentHistoryDeviceId}/history?page=${currentHistoryPage}&limit=${limit}&start_date=${date}&end_date=${date}`);
+    if (res.ok) {
+      const json = await res.json();
+      renderHistoryTable(json.data);
+      
+      document.getElementById('historyPaginationInfo').innerText = `Menampilkan halaman ${currentHistoryPage} (Terbaru di atas)`;
+      document.getElementById('btnPrevHistory').disabled = currentHistoryPage <= 1;
+      document.getElementById('btnNextHistory').disabled = json.data.length < limit;
+    } else {
+      showToast("Gagal memuat histori", "error");
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function renderHistoryTable(data) {
+  const tbody = document.getElementById('historyTableBody');
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#94a3b8;">Tidak ada aktivitas terekam pada tanggal ini.</td></tr>`;
+    return;
+  }
+  
+  tbody.innerHTML = data.map(d => {
+    const timeOnly = d.time ? new Date(d.time).toLocaleTimeString('id-ID', {hour12: false}) : '—';
+    return `
+      <tr>
+        <td style="color:#94a3b8">${timeOnly}</td>
+        <td><b>${d.cpu_usage ? d.cpu_usage.toFixed(1) + '%' : '—'}</b></td>
+        <td><b>${d.ram_usage ? d.ram_usage.toFixed(1) + '%' : '—'}</b></td>
+        <td><b>${d.temperature ? d.temperature.toFixed(1) + '°C' : '—'}</b></td>
+        <td><span style="color:#a855f7">${d.active_app || '—'}</span></td>
+        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#dc2626;" title="${d.active_url || ''}">
+          ${d.active_url || '—'}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function changeHistoryPage(offset) {
+  currentHistoryPage += offset;
+  if (currentHistoryPage < 1) currentHistoryPage = 1;
+  fetchDeviceHistory();
+}
+
+function exportHistoryExcel() {
+  if (!currentHistoryDeviceId) return;
+  const date = document.getElementById('historyDatePicker').value;
+  showToast("Menyiapkan File Excel...", "info");
+  window.open(`${API}/api/devices/${currentHistoryDeviceId}/history/export?start_date=${date}&end_date=${date}`, '_blank');
 }

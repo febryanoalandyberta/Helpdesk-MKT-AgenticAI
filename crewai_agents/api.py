@@ -12,6 +12,15 @@ from src.mkt_helpdesk_ai.crew import MktHelpdeskCrew
 
 app = FastAPI(title="MKT Helpdesk CrewAI API")
 
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 class TicketPayload(BaseModel):
     ticket_id: str
     title: str
@@ -19,6 +28,10 @@ class TicketPayload(BaseModel):
     reporter_name: str
     site_name: str
     severity: str
+
+@app.get("/api/health")
+def health_check():
+    return {"status": "online"}
 
 @app.post("/api/analyze")
 def analyze_ticket(payload: TicketPayload):

@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>MKT Helpdesk AI — Dashboard Monitoring</title>
 <meta name="description" content="Helpdesk MKT Agentic AI Automation — Real-time monitoring dashboard untuk 18 site Sam's Studio's"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/style.css"/>
+<link rel="stylesheet" href="css/style.css?v=3"/>
 </head>
 <body>
 
@@ -16,9 +19,8 @@
 <div id="loginPage" class="login-overlay">
   <div class="login-box">
     <div class="login-logo">
-      <div class="login-logo-icon">⚡</div>
+      <img src="assets/logo.png" alt="MKT Logo" class="login-logo-img" style="width: 80px; height: auto; margin-bottom: 15px;">
       <h1>MKT Helpdesk AI</h1>
-      <p>Sam's Studio's Cinema Network — PT Megakreasi Tech</p>
     </div>
     <form id="loginForm" onsubmit="handleLogin(event)">
       <div class="form-group">
@@ -32,14 +34,13 @@
       <div id="loginError" class="login-error" style="display:none"></div>
       <button type="submit" class="btn-primary login-btn" id="loginBtn">Masuk</button>
     </form>
-    <p class="login-footer">MKT Helpdesk AI v1.0 &copy; 2024 PT Megakreasi Tech</p>
   </div>
 </div>
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-icon">⚡</div>
+    <img src="assets/logo.png" alt="MKT Logo" class="logo-icon" style="width: 32px; height: 32px; object-fit: contain; background: transparent; border-radius: 4px;">
     <div class="logo-text">
       <span class="logo-main">MKT AI</span>
       <span class="logo-sub">Helpdesk System</span>
@@ -47,46 +48,46 @@
   </div>
   <nav class="sidebar-nav">
     <a href="#" class="nav-item active" data-page="dashboard">
-      <span class="nav-icon">📊</span><span>Dashboard</span>
+      <span>Dashboard</span>
     </a>
     <a href="#" class="nav-item" data-page="tickets">
-      <span class="nav-icon">🎫</span><span>Tiket</span>
+      <span>Tiket</span>
       <span class="nav-badge" id="badge-open">0</span>
     </a>
     <a href="#" class="nav-item" data-page="sites">
-      <span class="nav-icon">🏢</span><span>Sites</span>
+      <span>Sites</span>
     </a>
     <a href="#" class="nav-item" data-page="devices">
-      <span class="nav-icon">🖥️</span><span>Perangkat</span>
+      <span>Perangkat</span>
     </a>
     <a href="#" class="nav-item" data-page="incidents">
-      <span class="nav-icon">🧠</span><span>Incident Memory</span>
+      <span>Incident Memory</span>
       <span class="nav-badge" id="badge-incidents" style="display:none">0</span>
     </a>
     <a href="#" class="nav-item" data-page="tier1" style="display:none">
-      <span class="nav-icon">🔬</span><span>Tier 1 Diagnostic</span>
+      <span>Tier 1 Diagnostic</span>
     </a>
     <a href="#" class="nav-item" data-page="telegram">
-      <span class="nav-icon">💬</span><span>Telegram Notif</span>
+      <span>Telegram Notif</span>
     </a>
     <a href="#" class="nav-item" data-page="workflow" style="display:none">
-      <span class="nav-icon">🔄</span><span>Workflow (11 Steps)</span>
+      <span>Workflow (11 Steps)</span>
     </a>
     <a href="#" class="nav-item" data-page="zammad" style="display:none">
-      <span class="nav-icon">🎫</span><span>Zammad Status</span>
+      <span>Zammad Status</span>
     </a>
     <a href="#" class="nav-item" data-page="audit">
-      <span class="nav-icon">📋</span><span>Audit Log</span>
+      <span>Audit Log</span>
     </a>
     <!-- Hanya muncul untuk SUPER_ADMIN dan USER_ADMIN -->
     <a href="#" class="nav-item nav-admin-only" data-page="users" id="navUsers" style="display:none">
-      <span class="nav-icon">👥</span><span>Manajemen User</span>
+      <span>Manajemen User</span>
     </a>
   </nav>
   <div class="sidebar-footer">
-    <div class="agent-status">
+    <div class="agent-status" id="crewaiIndicator">
       <div class="pulse-dot"></div>
-      <span>CrewAI Online</span>
+      <span id="crewaiIndicatorText">CrewAI Menghubungkan...</span>
     </div>
   </div>
 </aside>
@@ -98,15 +99,15 @@
   <header class="topbar">
     <div class="topbar-left">
       <button class="hamburger" id="hamburger">☰</button>
-      <div class="breadcrumb" id="breadcrumb">Dashboard</div>
+      <div class="breadcrumb" id="breadcrumb" style="display:none;">Dashboard</div>
     </div>
     <div class="topbar-right">
-      <div class="search-box">
+      <div class="search-box" style="display:none;">
         <input type="text" id="globalSearch" placeholder="Cari tiket, site, device..." />
         <span>🔍</span>
       </div>
       <div class="topbar-time" id="topbarTime"></div>
-      <button class="btn-primary btn-sm" onclick="showNewTicketModal()" id="btnNewTicket">+ Tiket Baru</button>
+      <button class="btn-primary btn-sm" onclick="showNewTicketModal()" id="btnNewTicket" style="display:none;">+ Tiket Baru</button>
       <div class="user-menu" id="userMenu">
         <div class="avatar" id="avatarBtn" onclick="toggleUserDropdown()">A</div>
         <div class="user-dropdown" id="userDropdown" style="display:none">
@@ -128,13 +129,12 @@
     <div id="page-dashboard" class="page active">
       <div class="page-header">
         <h1>Dashboard Monitoring</h1>
-        <p>Real-time overview — Sam's Studio's 18 Sites · 72 POS Devices</p>
       </div>
 
       <!-- KPI CARDS -->
       <div class="kpi-grid">
         <div class="kpi-card kpi-red">
-          <div class="kpi-icon">🔴</div>
+
           <div class="kpi-body">
             <div class="kpi-label">Tiket Terbuka</div>
             <div class="kpi-value" id="kpi-open">—</div>
@@ -142,7 +142,7 @@
           </div>
         </div>
         <div class="kpi-card kpi-orange">
-          <div class="kpi-icon">⚠️</div>
+
           <div class="kpi-body">
             <div class="kpi-label">SLA Breached</div>
             <div class="kpi-value" id="kpi-sla">—</div>
@@ -150,7 +150,7 @@
           </div>
         </div>
         <div class="kpi-card kpi-green">
-          <div class="kpi-icon">✅</div>
+
           <div class="kpi-body">
             <div class="kpi-label">Auto-Resolution Rate</div>
             <div class="kpi-value" id="kpi-auto">—</div>
@@ -158,7 +158,7 @@
           </div>
         </div>
         <div class="kpi-card kpi-blue">
-          <div class="kpi-icon">⏱️</div>
+
           <div class="kpi-body">
             <div class="kpi-label">Rata-rata MTTR</div>
             <div class="kpi-value" id="kpi-mttr">—</div>
@@ -166,7 +166,7 @@
           </div>
         </div>
         <div class="kpi-card kpi-purple">
-          <div class="kpi-icon">🖥️</div>
+
           <div class="kpi-body">
             <div class="kpi-label">Device Online</div>
             <div class="kpi-value" id="kpi-devices">—</div>
@@ -174,7 +174,7 @@
           </div>
         </div>
         <div class="kpi-card kpi-teal">
-          <div class="kpi-icon">📅</div>
+
           <div class="kpi-body">
             <div class="kpi-label">Tiket Hari Ini</div>
             <div class="kpi-value" id="kpi-today">—</div>
@@ -183,28 +183,7 @@
         </div>
       </div>
 
-      <!-- CHARTS ROW -->
-      <div class="charts-row">
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>AI Confidence Trend</h3>
-            <span class="chart-badge">7 Hari Terakhir</span>
-          </div>
-          <canvas id="confidenceChart" height="200"></canvas>
-        </div>
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>Tiket by Severity</h3>
-          </div>
-          <canvas id="severityChart" height="200"></canvas>
-        </div>
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>Tiket by Kategori</h3>
-          </div>
-          <canvas id="categoryChart" height="200"></canvas>
-        </div>
-      </div>
+
 
       <!-- SITE HEALTH GRID -->
       <div class="section-header">
@@ -237,8 +216,10 @@
 
     <!-- ═══════════════ PAGE: TICKETS ═══════════════ -->
     <div id="page-tickets" class="page">
-      <div class="page-header">
-        <h1>Manajemen Tiket</h1>
+      <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h1>Manajemen Tiket</h1>
+        </div>
         <div style="display: flex; gap: 8px; align-items: center;">
           <div id="forceSyncResult" style="font-size: 12px; margin-right: 8px;"></div>
           <button class="btn-primary" onclick="forceSyncZammad()" style="background-color: #ef4444; border: none; font-weight: 600;">🔄 Sync Zammad</button>
@@ -285,7 +266,6 @@
       <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
         <div>
           <h1>Daftar Site</h1>
-          <p>Lokasi Bioskop Sam's Studio's</p>
         </div>
         <button class="btn-primary" onclick="showAddSiteModal()">+ Tambah Site</button>
       </div>
@@ -299,9 +279,7 @@
       <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
         <div>
           <h1>Inventori Perangkat</h1>
-          <p>72 POS Devices · 4 per site</p>
         </div>
-        <button class="btn-primary" onclick="showNewDeviceModal()">+ Tambah Perangkat</button>
       </div>
       <div class="filter-bar">
         <select id="filterDeviceType" onchange="loadDevices()">
@@ -320,7 +298,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Nama Device</th><th>Tipe</th><th>IP Address</th><th>OS</th>
+              <th>Nama Device</th><th>Site / Lokasi</th><th>Tipe</th><th>IP Address</th><th>OS</th>
               <th>Kesehatan (CPU/RAM/Suhu)</th><th>Aktivitas Sekarang</th>
               <th>Status</th><th>Last Ping</th><th>Aksi</th>
             </tr>
@@ -333,9 +311,9 @@
     </div>
     
     <!-- ═══════════════ FLOATING PING TERMINAL ═══════════════ -->
-    <div id="floatingTerminal" class="table-card" style="display: none; position: fixed; bottom: 24px; right: 24px; width: 450px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); z-index: 9999; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #38bdf8; border-radius: 8px; overflow: hidden;">
+    <div id="floatingTerminal" class="table-card" style="display: none; position: fixed; bottom: 24px; right: 24px; width: 450px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); z-index: 9999; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #dc2626; border-radius: 8px; overflow: hidden;">
       <div class="chart-header" style="border-bottom: 1px solid #1e293b; padding: 10px 16px; background: #0b1120;">
-        <h3 style="color: #38bdf8; margin: 0; font-family: monospace; font-size: 14px;">>_ Terminal Ping</h3>
+        <h3 style="color: #dc2626; margin: 0; font-family: monospace; font-size: 14px;">>_ Terminal Ping</h3>
         <div style="display: flex; gap: 4px;">
           <button class="btn-ghost btn-sm" onclick="clearPingTerminal()" style="color: #94a3b8; padding: 2px 8px;">Clear</button>
           <button class="btn-ghost btn-sm" onclick="closePingTerminal()" style="color: #ef4444; padding: 2px 8px;">✕</button>
@@ -348,7 +326,6 @@
     <div id="page-incidents" class="page">
       <div class="page-header">
         <h1>Incident Memory</h1>
-        <p>Long-term AI memory untuk pattern learning</p>
       </div>
       <div class="table-card">
         <table class="data-table">
@@ -375,7 +352,6 @@
     <div id="page-telegram" class="page">
       <div class="page-header">
         <h1>💬 Telegram Notification Log</h1>
-        <p>Sesuai diagram: Tier 0 &amp; Tier 1 → Telegram Group per site</p>
       </div>
       <div class="table-card">
         <table class="data-table">
@@ -427,11 +403,10 @@
       </div>
     </div>
 
-    <!-- ═══════════════ PAGE: AUDIT ═══════════════ -->
+    <!-- ═══════════════ PAGE: AUDIT LOG ═══════════════ -->
     <div id="page-audit" class="page">
       <div class="page-header">
         <h1>Audit Log</h1>
-        <p>Semua aktivitas agent dan pengguna tercatat di sini</p>
       </div>
       <div class="table-card">
         <table class="data-table">
@@ -447,8 +422,10 @@
 
     <!-- ═══════════════ PAGE: USER MANAGEMENT ═══════════════ -->
     <div id="page-users" class="page">
-      <div class="page-header">
-        <h1>👥 Manajemen User</h1>
+      <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h1>👥 Manajemen User</h1>
+        </div>
         <button class="btn-primary" onclick="showAddUserModal()">+ Tambah User</button>
       </div>
       <div class="table-card">
@@ -624,6 +601,46 @@
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: TELEMETRY HISTORY ═══════════════ -->
+<div class="modal modal-wide" id="historyModal" style="display:none; max-width:900px; height:85vh; flex-direction:column;">
+  <div class="modal-header" style="padding-bottom:10px;">
+    <div>
+      <h3 id="historyModalTitle">📜 Telemetry Log History</h3>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <input type="date" id="historyDatePicker" style="padding:6px; border-radius:4px; background:#1e293b; color:#fff; border:1px solid #334155; font-size:13px;" onchange="fetchDeviceHistory()"/>
+      <button class="btn-primary" style="padding:6px 12px; font-size:13px;" onclick="exportHistoryExcel()">📥 Unduh Excel (.xlsx)</button>
+      <button class="modal-close" onclick="closeHistoryModal()">✕</button>
+    </div>
+  </div>
+  <div class="modal-body" style="flex:1; overflow:hidden; padding:0; display:flex; flex-direction:column;">
+    <div style="overflow-y:auto; flex:1;">
+      <table class="table" style="margin-top:0;">
+        <thead style="position:sticky; top:0; z-index:2;">
+          <tr>
+            <th>TIME</th>
+            <th>CPU (%)</th>
+            <th>RAM (%)</th>
+            <th>TEMP (°C)</th>
+            <th>ACTIVE APP</th>
+            <th>ACTIVE URL</th>
+          </tr>
+        </thead>
+        <tbody id="historyTableBody">
+          <!-- Data history -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="modal-footer" style="justify-content:space-between; align-items:center; padding:10px 15px; background:var(--bg-card);">
+    <div id="historyPaginationInfo" style="font-size:12px; color:#94a3b8;">Menampilkan halaman 1</div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn-ghost btn-sm" id="btnPrevHistory" onclick="changeHistoryPage(-1)">← Sebelumnya</button>
+      <button class="btn-ghost btn-sm" id="btnNextHistory" onclick="changeHistoryPage(1)">Berikutnya →</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: NEW DEVICE ═══════════════ -->
 <div class="modal" id="newDeviceModal">
   <div class="modal-header">
@@ -632,8 +649,10 @@
   </div>
   <div class="modal-body">
     <div class="form-group">
-      <label>Site ID (contoh: SITE-IDM)</label>
-      <input type="text" id="addDeviceSiteId" placeholder="Site ID"/>
+      <label>Site / Lokasi</label>
+      <select id="addDeviceSiteId">
+        <option value="">Memuat daftar site...</option>
+      </select>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -645,6 +664,8 @@
         <select id="addDeviceType">
           <option value="POS_TICKETING">POS Ticketing</option>
           <option value="POS_FNB">POS FNB</option>
+          <option value="STM">STM</option>
+          <option value="PC OFFICE">PC Office</option>
         </select>
       </div>
     </div>
@@ -672,27 +693,22 @@
     <button class="modal-close" onclick="closeDeviceModal()">✕</button>
   </div>
   <div class="modal-body">
+    <input type="hidden" id="editDeviceId" />
     <div class="form-row">
       <div class="form-group">
-        <label>Nama Device</label>
-        <input type="text" id="editDeviceName"/>
+        <label>Site / Lokasi</label>
+        <select id="editDeviceSiteId">
+          <option value="">Memuat daftar site...</option>
+        </select>
       </div>
       <div class="form-group">
         <label>Tipe</label>
         <select id="editDeviceType">
           <option value="POS_TICKETING">POS Ticketing</option>
           <option value="POS_FNB">POS FNB</option>
+          <option value="STM">STM</option>
+          <option value="PC OFFICE">PC Office</option>
         </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>IP Address</label>
-        <input type="text" id="editDeviceIp"/>
-      </div>
-      <div class="form-group">
-        <label>OS</label>
-        <input type="text" id="editDeviceOs"/>
       </div>
     </div>
   </div>
@@ -755,6 +771,6 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<script src="js/app.js?v=14"></script>
+<script src="js/app.js?v=34"></script>
 </body>
 </html>

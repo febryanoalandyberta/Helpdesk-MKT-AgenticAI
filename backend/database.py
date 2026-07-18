@@ -38,6 +38,22 @@ async def get_db() -> AsyncSession:
 
 async def init_db():
     """Create all tables on startup."""
+    from sqlalchemy import text
+    import logging
     async with engine.begin() as conn:
-        from models import site, device, ticket, incident, user, audit_log  # noqa
+        from models import site, device, ticket, incident, user, audit_log, telemetry_history  # noqa
         await conn.run_sync(Base.metadata.create_all)
+        
+        # Initialize TimescaleDB Hypertable
+        if not settings.DATABASE_URL.startswith("sqlite"):
+            try:
+                # Create hypertable
+                await conn.execute(text("SELECT create_hypertable('telemetry_logs', by_range('time'), if_not_exists => TRUE);"))
+                # Enable compression
+                await conn.execute(text("ALTER TABLE telemetry_logs SET (timescaledb.compress);"))
+                # Add retention policy (drop after 3 months)
+                await conn.execute(text("SELECT add_retention_policy('telemetry_logs', INTERVAL '3 months', if_not_exists => TRUE);"))
+                # Add compression policy (compress after 7 days)
+                await conn.execute(text("SELECT add_compression_policy('telemetry_logs', INTERVAL '7 days', if_not_exists => TRUE);"))
+            except Exception as e:
+                logging.warning(f"TimescaleDB initialization error (usually safe to ignore if already configured): {e}")
