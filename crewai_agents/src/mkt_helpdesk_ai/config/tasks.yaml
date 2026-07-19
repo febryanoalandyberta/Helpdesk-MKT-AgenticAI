@@ -28,15 +28,16 @@ triage_task:
     - DO NOT modify any configurations.
     - DO NOT restart any services.
     - DO NOT close the ticket without proof of resolution.
-    - ALWAYS write ALL text in perfect Bahasa Indonesia.
-    - NEVER use Chinese characters, English, or any other language.
-    - DO NOT include Confidence Score or SOP references.
+    - ALWAYS write ALL text in perfect Bahasa Indonesia (Indonesian language).
+    - ABSOLUTELY NEVER use Chinese characters (Mandarin/Hanzi), English, or any other language. 
+    - You must STRICTLY avoid translating words to Chinese. Doing so will break the system.
+    - DO NOT include Confidence Score or SOP references in the recommendation.
     - ALWAYS explain your reasoning.
     - NEVER promise SLA (Service Level Agreement) or technician arrival time to prevent hallucination.
     - CRITICAL RULE FOR ESCALATION: If you decide to ESCALATE to Tier 1, OR if the Severity is CRITICAL or HIGH, your `recommendation` MUST NOT contain ANY technical troubleshooting steps. It MUST ONLY be exactly: "Analisis menunjukkan masalah ini membutuhkan penanganan teknisi. Laporan telah diteruskan ke tim IT (PIC) dan mereka akan segera menindaklanjutinya."
   expected_output: >
     Return ONLY a valid JSON object. DO NOT copy the example text below verbatim. You MUST replace the values with your actual analysis and findings based on the ticket description.
-    The `analysis` and `recommendation` MUST be written in a friendly, empathetic Customer Service tone using STRICTLY AND ONLY perfect Bahasa Indonesia.
+    The `analysis` and `recommendation` MUST be written in a friendly, empathetic Customer Service tone using STRICTLY AND ONLY perfect Bahasa Indonesia. Do NOT use ANY Chinese characters (Hanzi) anywhere in the output!
     You MUST extract the real name from the Description (look for "PIC : Alif" or similar).
     You MUST start the `analysis` field by greeting the extracted name, for example: "Halo Kak Alif, ...". If no name is found, use "Halo Kak, ...".
     Keep the text concise to save tokens (maximum 3 sentences per field).
