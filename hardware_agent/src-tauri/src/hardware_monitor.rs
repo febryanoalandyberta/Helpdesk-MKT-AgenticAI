@@ -86,12 +86,15 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             Err(_) => return,
         };
         
+        let mut known_usb_names: HashMap<String, String> = HashMap::new();
         let mut previous_usb: HashSet<String> = HashSet::new();
         let mut missing_usb_since: HashMap<String, std::time::Instant> = HashMap::new();
         
+        let mut known_monitor_names: HashMap<String, String> = HashMap::new();
         let mut previous_monitors: HashSet<String> = HashSet::new();
         let mut missing_monitors_since: HashMap<String, std::time::Instant> = HashMap::new();
         
+        let mut known_lan_names: HashMap<String, String> = HashMap::new();
         let mut previous_lan_status: HashMap<String, u16> = HashMap::new();
         let mut lan_down_since: HashMap<String, std::time::Instant> = HashMap::new();
         
@@ -99,6 +102,14 @@ pub async fn start_hardware_monitor(app: AppHandle) {
         if let Ok(usb_devices) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
             for dev in usb_devices {
                 previous_usb.insert(dev.device_id.clone());
+                known_usb_names.insert(dev.device_id.clone(), dev.name.unwrap_or_else(|| "Unknown USB Device".to_string()));
+            }
+        }
+        
+        if let Ok(monitors) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE PNPClass = 'Monitor'") {
+            for dev in monitors {
+                previous_monitors.insert(dev.device_id.clone());
+                known_monitor_names.insert(dev.device_id.clone(), dev.name.unwrap_or_else(|| "Unknown Display".to_string()));
             }
         }
         
@@ -108,14 +119,14 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             // 1. Check USB Devices
             if let Ok(usb_devices) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
                 let current_usb: HashSet<String> = usb_devices.iter().map(|d| d.device_id.clone()).collect();
-                let current_map: HashMap<String, String> = usb_devices.into_iter().map(|d| (d.device_id.clone(), d.name.unwrap_or_else(|| "Unknown USB Device".to_string()))).collect();
+                for d in &usb_devices {
+                    known_usb_names.insert(d.device_id.clone(), d.name.clone().unwrap_or_else(|| "Unknown USB Device".to_string()));
+                }
                 
                 // Check what went missing
                 for old_dev in &previous_usb {
                     if !current_usb.contains(old_dev) {
-                        if !missing_usb_since.contains_key(old_dev) {
-                            missing_usb_since.insert(old_dev.clone(), std::time::Instant::now());
-                        }
+                        missing_usb_since.entry(old_dev.clone()).or_insert_with(std::time::Instant::now);
                     }
                 }
                 
@@ -134,7 +145,8 @@ pub async fn start_hardware_monitor(app: AppHandle) {
                 for dev in to_report {
                     missing_usb_since.remove(&dev);
                     previous_usb.remove(&dev); // Don't report again
-                    let _ = tx.blocking_send(("USB".to_string(), dev.clone(), "USB device disconnected".to_string()));
+                    let name = known_usb_names.get(&dev).cloned().unwrap_or_else(|| dev.clone());
+                    let _ = tx.blocking_send(("USB".to_string(), name, "USB device disconnected".to_string()));
                 }
                 
                 // Add new devices to previous_usb
@@ -145,49 +157,50 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             
             // 2. Check LAN
             if let Ok(adapters) = wmi_con.raw_query::<Win32_NetworkAdapter>("SELECT DeviceID, Name, NetConnectionStatus FROM Win32_NetworkAdapter WHERE NetConnectionStatus IS NOT NULL") {
+                let now = std::time::Instant::now();
+                let mut to_report_lan = Vec::new();
+                
                 for adapter in adapters {
                     let id = adapter.device_id.clone();
                     let status = adapter.net_connection_status.unwrap_or(0);
-                    let name = adapter.name.unwrap_or_else(|| "Unknown Adapter".to_string());
+                    let name = adapter.name.clone().unwrap_or_else(|| "Unknown Adapter".to_string());
                     
+                    known_lan_names.insert(id.clone(), name.clone());
                     let prev_status = previous_lan_status.get(&id).copied().unwrap_or(status);
                     
                     // NetConnectionStatus: 2 = Connected, 4 = Disconnected, 7 = Media disconnected
                     if (status == 4 || status == 7) && prev_status == 2 {
-                        if !lan_down_since.contains_key(&id) {
-                            lan_down_since.insert(id.clone(), std::time::Instant::now());
-                        }
+                        lan_down_since.entry(id.clone()).or_insert_with(std::time::Instant::now);
                     } else if status == 2 {
                         lan_down_since.remove(&id);
                     }
                     
                     previous_lan_status.insert(id.clone(), status);
-                    
-                    let now = std::time::Instant::now();
-                    let mut to_report = Vec::new();
-                    for (dev_id, since) in &lan_down_since {
-                        if now.duration_since(*since).as_secs() >= 30 {
-                            to_report.push(dev_id.clone());
-                        }
-                    }
-                    
-                    for dev_id in to_report {
-                        lan_down_since.remove(&dev_id);
-                        let _ = tx.blocking_send(("LAN".to_string(), name.clone(), "Network adapter disconnected".to_string()));
+                }
+                
+                for (dev_id, since) in &lan_down_since {
+                    if now.duration_since(*since).as_secs() >= 30 {
+                        to_report_lan.push(dev_id.clone());
                     }
                 }
-            } // This closes if let Ok(adapters)
-
+                
+                for dev_id in to_report_lan {
+                    lan_down_since.remove(&dev_id);
+                    let name = known_lan_names.get(&dev_id).cloned().unwrap_or_else(|| dev_id.clone());
+                    let _ = tx.blocking_send(("LAN".to_string(), name, "Network adapter disconnected".to_string()));
+                }
+            }
+            
             // 3. Check Monitors/HDMI
-            if let Ok(monitors) = wmi_con.raw_query::<Win32_DesktopMonitor>("SELECT DeviceID, Name FROM Win32_DesktopMonitor") {
+            if let Ok(monitors) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE PNPClass = 'Monitor'") {
                 let current_monitors: HashSet<String> = monitors.iter().map(|d| d.device_id.clone()).collect();
-                let current_map: HashMap<String, String> = monitors.into_iter().map(|d| (d.device_id.clone(), d.name.unwrap_or_else(|| "Unknown Display".to_string()))).collect();
+                for d in &monitors {
+                    known_monitor_names.insert(d.device_id.clone(), d.name.clone().unwrap_or_else(|| "Unknown Display".to_string()));
+                }
                 
                 for old_dev in &previous_monitors {
                     if !current_monitors.contains(old_dev) {
-                        if !missing_monitors_since.contains_key(old_dev) {
-                            missing_monitors_since.insert(old_dev.clone(), std::time::Instant::now());
-                        }
+                        missing_monitors_since.entry(old_dev.clone()).or_insert_with(std::time::Instant::now);
                     }
                 }
                 
@@ -204,7 +217,8 @@ pub async fn start_hardware_monitor(app: AppHandle) {
                 for dev in to_report {
                     missing_monitors_since.remove(&dev);
                     previous_monitors.remove(&dev);
-                    let _ = tx.blocking_send(("HDMI/Display".to_string(), dev.clone(), "Display monitor disconnected".to_string()));
+                    let name = known_monitor_names.get(&dev).cloned().unwrap_or_else(|| dev.clone());
+                    let _ = tx.blocking_send(("HDMI/Display".to_string(), name, "Display monitor disconnected".to_string()));
                 }
                 
                 for dev in current_monitors {
