@@ -16,21 +16,32 @@ router = APIRouter(prefix="/api/port-checker", tags=["Port Checker"])
 class CreatePortLogRequest(BaseModel):
     summary: str
     category: Optional[str] = None
+    hardware_type: Optional[str] = None
+    hardware_name: Optional[str] = None
     device_name: Optional[str] = None
-    device_type: Optional[str] = None
-    device_id: Optional[str] = None # Some older agents might not send it
+    device_id: Optional[str] = None
     site_name: Optional[str] = None # Not in PortCheckerLog model currently, but kept for compatibility with incoming payloads
 
 @router.post("/")
 async def create_port_log(data: CreatePortLogRequest, db: AsyncSession = Depends(get_db)):
-    # Fallback to map the device_id if not present in request but maybe can be inferred later.
-    # The new hardware agent should send device_id.
+    # Fallback to map the device_id if not present in request.
+    mapped_device_id = data.device_id
+
+    if not mapped_device_id and data.device_name:
+        # Search for device by device_name (hostname)
+        from models.device import Device
+        q = await db.execute(select(Device.device_id).where(Device.device_name == data.device_name))
+        found_id = q.scalar_one_or_none()
+        if found_id:
+            mapped_device_id = str(found_id)
+
     log_data = {
         "summary": data.summary,
         "category": data.category,
         "device_name": data.device_name,
-        "device_type": data.device_type,
-        "device_id": data.device_id,
+        "hardware_type": data.hardware_type,
+        "hardware_name": data.hardware_name,
+        "device_id": mapped_device_id,
         "is_read": False
     }
     
@@ -99,7 +110,9 @@ async def export_port_logs(device_id: str, db: AsyncSession = Depends(get_db)):
 
         ws.cell(row=row_num, column=1, value=local_time_str)
         ws.cell(row=row_num, column=2, value=l.category or "-")
-        ws.cell(row=row_num, column=3, value=l.device_name or "-")
+        # Kombinasikan Hardware Type & Name untuk kejelasan
+        hardware_desc = f"{l.hardware_type or ''} - {l.hardware_name or ''}".strip(' -')
+        ws.cell(row=row_num, column=3, value=hardware_desc if hardware_desc else "-")
         ws.cell(row=row_num, column=4, value=l.summary or "-")
         ws.cell(row=row_num, column=5, value="Sudah Dibaca" if l.is_read else "Belum Dibaca")
 

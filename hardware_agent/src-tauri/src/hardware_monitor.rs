@@ -37,8 +37,8 @@ struct Win32_NetworkAdapter {
 struct IncidentPayload {
     category: String,
     summary: String,
-    device_name: String,
-    device_type: String,
+    hardware_name: String,
+    hardware_type: String,
 }
 
 const API_BASE: &str = "http://10.20.0.193:8000/api";
@@ -47,7 +47,7 @@ async fn report_incident(app: &AppHandle, payload: IncidentPayload) {
     let app_handle = app.clone();
     
     // Show UI dialog
-    let msg = format!("Warning: {} has been disconnected or failed. Reporting to Incident Memory.", payload.device_name);
+    let msg = format!("Warning: {} has been disconnected or failed. Reporting to Incident Memory.", payload.hardware_name);
     MessageDialogBuilder::new("Hardware Alert", &msg)
         .kind(tauri::api::dialog::MessageDialogKind::Warning)
         .show(|_| {});
@@ -62,9 +62,9 @@ async fn report_incident(app: &AppHandle, payload: IncidentPayload) {
     let req_body = serde_json::json!({
         "summary": payload.summary,
         "category": payload.category,
-        "device_name": payload.device_name,
-        "device_type": payload.device_type,
-        "site_name": hostname
+        "hardware_name": payload.hardware_name,
+        "hardware_type": payload.hardware_type,
+        "device_name": hostname
     });
     
     let _ = client.post(&url).json(&req_body).send().await;
@@ -220,8 +220,8 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             report_incident(&app, IncidentPayload {
                 category: "HARDWARE_FAILURE".to_string(),
                 summary: format!("{}: {}", summary, dev_name),
-                device_name: dev_name,
-                device_type: dev_type,
+                hardware_name: dev_name,
+                hardware_type: dev_type,
             }).await;
         }
     });

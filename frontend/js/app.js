@@ -1503,7 +1503,7 @@ async function fetchPortCheckerHistory() {
             <tr>
               <td style="color:#94a3b8">${wkt}</td>
               <td><span class="badge badge-medium">${log.category || '—'}</span></td>
-              <td>${log.device_name || '—'}</td>
+             <td>${(log.hardware_type || '') + ' - ' + (log.hardware_name || '—')}</td>
               <td style="color:#ef4444">${log.summary}</td>
             </tr>
           `;
