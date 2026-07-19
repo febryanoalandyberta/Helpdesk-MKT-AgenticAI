@@ -45,13 +45,13 @@ struct IncidentPayload {
 const API_BASE: &str = "http://10.20.0.193:8000/api";
 
 async fn report_incident(app: &AppHandle, payload: IncidentPayload) {
-    let app_handle = app.clone();
-    
-    // Show UI dialog
     let msg = format!("Warning: {} has been disconnected or failed. Reporting to Incident Memory.", payload.hardware_name);
-    MessageDialogBuilder::new("Hardware Alert", &msg)
-        .kind(tauri::api::dialog::MessageDialogKind::Warning)
-        .show(|_| {});
+    
+    // Show UI notification (thread-safe)
+    let _ = tauri::api::notification::Notification::new(&app.config().tauri.bundle.identifier)
+        .title("Hardware Alert")
+        .body(&msg)
+        .show();
         
     // Send to backend
     let client = reqwest::Client::new();
@@ -100,19 +100,47 @@ pub async fn start_hardware_monitor(app: AppHandle) {
         let mut lan_down_since: HashMap<String, std::time::Instant> = HashMap::new();
         
         // Initial population
-        if let Ok(usb_devices) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
+        if let Ok(usb_devices) = wmi_con.raw_query::<HashMap<String, wmi::Variant>>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
             for dev in usb_devices {
-                if dev.config_manager_error_code.unwrap_or(0) != 0 { continue; }
-                previous_usb.insert(dev.device_id.clone());
-                known_usb_names.insert(dev.device_id.clone(), dev.name.unwrap_or_else(|| "Unknown USB Device".to_string()));
+                let device_id = match dev.get("DeviceID") {
+                    Some(wmi::Variant::String(s)) => s.clone(),
+                    _ => continue,
+                };
+                let err_code = match dev.get("ConfigManagerErrorCode") {
+                    Some(wmi::Variant::I4(v)) => *v,
+                    Some(wmi::Variant::UI4(v)) => *v as i32,
+                    _ => 0,
+                };
+                if err_code != 0 { continue; }
+                
+                let name = match dev.get("Name") {
+                    Some(wmi::Variant::String(s)) => s.clone(),
+                    _ => "Unknown USB Device".to_string(),
+                };
+                previous_usb.insert(device_id.clone());
+                known_usb_names.insert(device_id, name);
             }
         }
         
-        if let Ok(monitors) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE PNPClass = 'Monitor'") {
+        if let Ok(monitors) = wmi_con.raw_query::<HashMap<String, wmi::Variant>>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE PNPClass = 'Monitor'") {
             for dev in monitors {
-                if dev.config_manager_error_code.unwrap_or(0) != 0 { continue; }
-                previous_monitors.insert(dev.device_id.clone());
-                known_monitor_names.insert(dev.device_id.clone(), dev.name.unwrap_or_else(|| "Unknown Display".to_string()));
+                let device_id = match dev.get("DeviceID") {
+                    Some(wmi::Variant::String(s)) => s.clone(),
+                    _ => continue,
+                };
+                let err_code = match dev.get("ConfigManagerErrorCode") {
+                    Some(wmi::Variant::I4(v)) => *v,
+                    Some(wmi::Variant::UI4(v)) => *v as i32,
+                    _ => 0,
+                };
+                if err_code != 0 { continue; }
+                
+                let name = match dev.get("Name") {
+                    Some(wmi::Variant::String(s)) => s.clone(),
+                    _ => "Unknown Display".to_string(),
+                };
+                previous_monitors.insert(device_id.clone());
+                known_monitor_names.insert(device_id, name);
             }
         }
         
@@ -120,26 +148,36 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             std::thread::sleep(Duration::from_secs(5));
             
             // 1. Check USB Devices
-            if let Ok(usb_devices) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
-                let current_usb: HashSet<String> = usb_devices.iter()
-                    .filter(|d| d.config_manager_error_code.unwrap_or(0) == 0)
-                    .map(|d| d.device_id.clone()).collect();
+            if let Ok(usb_devices) = wmi_con.raw_query::<HashMap<String, wmi::Variant>>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
+                let mut current_usb = HashSet::new();
                 for d in &usb_devices {
-                    if d.config_manager_error_code.unwrap_or(0) != 0 { continue; }
-                    known_usb_names.insert(d.device_id.clone(), d.name.clone().unwrap_or_else(|| "Unknown USB Device".to_string()));
+                    let device_id = match d.get("DeviceID") {
+                        Some(wmi::Variant::String(s)) => s.clone(),
+                        _ => continue,
+                    };
+                    let err_code = match d.get("ConfigManagerErrorCode") {
+                        Some(wmi::Variant::I4(v)) => *v,
+                        Some(wmi::Variant::UI4(v)) => *v as i32,
+                        _ => 0,
+                    };
+                    if err_code != 0 { continue; }
+                    
+                    let name = match d.get("Name") {
+                        Some(wmi::Variant::String(s)) => s.clone(),
+                        _ => "Unknown USB Device".to_string(),
+                    };
+                    current_usb.insert(device_id.clone());
+                    known_usb_names.insert(device_id, name);
                 }
                 
-                // Check what went missing
                 for old_dev in &previous_usb {
                     if !current_usb.contains(old_dev) {
                         missing_usb_since.entry(old_dev.clone()).or_insert_with(std::time::Instant::now);
                     }
                 }
                 
-                // Check what came back
                 missing_usb_since.retain(|dev, _| !current_usb.contains(dev));
                 
-                // Trigger incidents for 30s missing
                 let now = std::time::Instant::now();
                 let mut to_report = Vec::new();
                 for (dev, since) in &missing_usb_since {
@@ -150,31 +188,41 @@ pub async fn start_hardware_monitor(app: AppHandle) {
                 
                 for dev in to_report {
                     missing_usb_since.remove(&dev);
-                    previous_usb.remove(&dev); // Don't report again
+                    previous_usb.remove(&dev);
                     let name = known_usb_names.get(&dev).cloned().unwrap_or_else(|| dev.clone());
                     let _ = tx.blocking_send(("USB".to_string(), name, "USB device disconnected".to_string()));
                 }
                 
-                // Add new devices to previous_usb
                 for dev in current_usb {
                     previous_usb.insert(dev);
                 }
             }
             
             // 2. Check LAN
-            if let Ok(adapters) = wmi_con.raw_query::<Win32_NetworkAdapter>("SELECT DeviceID, Name, NetConnectionStatus FROM Win32_NetworkAdapter WHERE NetConnectionStatus IS NOT NULL") {
+            if let Ok(adapters) = wmi_con.raw_query::<HashMap<String, wmi::Variant>>("SELECT DeviceID, Name, NetConnectionStatus FROM Win32_NetworkAdapter WHERE NetConnectionStatus IS NOT NULL") {
                 let now = std::time::Instant::now();
                 let mut to_report_lan = Vec::new();
                 
                 for adapter in adapters {
-                    let id = adapter.device_id.clone();
-                    let status = adapter.net_connection_status.unwrap_or(0);
-                    let name = adapter.name.clone().unwrap_or_else(|| "Unknown Adapter".to_string());
+                    let id = match adapter.get("DeviceID") {
+                        Some(wmi::Variant::String(s)) => s.clone(),
+                        _ => continue,
+                    };
+                    let status = match adapter.get("NetConnectionStatus") {
+                        Some(wmi::Variant::I2(v)) => *v as u16,
+                        Some(wmi::Variant::UI2(v)) => *v as u16,
+                        Some(wmi::Variant::I4(v)) => *v as u16,
+                        Some(wmi::Variant::UI4(v)) => *v as u16,
+                        _ => 0,
+                    };
+                    let name = match adapter.get("Name") {
+                        Some(wmi::Variant::String(s)) => s.clone(),
+                        _ => "Unknown Adapter".to_string(),
+                    };
                     
                     known_lan_names.insert(id.clone(), name.clone());
                     let prev_status = previous_lan_status.get(&id).copied().unwrap_or(status);
                     
-                    // NetConnectionStatus: 2 = Connected, 4 = Disconnected, 7 = Media disconnected
                     if (status == 4 || status == 7) && prev_status == 2 {
                         lan_down_since.entry(id.clone()).or_insert_with(std::time::Instant::now);
                     } else if status == 2 {
@@ -198,13 +246,26 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             }
             
             // 3. Check Monitors/HDMI
-            if let Ok(monitors) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE PNPClass = 'Monitor'") {
-                let current_monitors: HashSet<String> = monitors.iter()
-                    .filter(|d| d.config_manager_error_code.unwrap_or(0) == 0)
-                    .map(|d| d.device_id.clone()).collect();
+            if let Ok(monitors) = wmi_con.raw_query::<HashMap<String, wmi::Variant>>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE PNPClass = 'Monitor'") {
+                let mut current_monitors = HashSet::new();
                 for d in &monitors {
-                    if d.config_manager_error_code.unwrap_or(0) != 0 { continue; }
-                    known_monitor_names.insert(d.device_id.clone(), d.name.clone().unwrap_or_else(|| "Unknown Display".to_string()));
+                    let device_id = match d.get("DeviceID") {
+                        Some(wmi::Variant::String(s)) => s.clone(),
+                        _ => continue,
+                    };
+                    let err_code = match d.get("ConfigManagerErrorCode") {
+                        Some(wmi::Variant::I4(v)) => *v,
+                        Some(wmi::Variant::UI4(v)) => *v as i32,
+                        _ => 0,
+                    };
+                    if err_code != 0 { continue; }
+                    
+                    let name = match d.get("Name") {
+                        Some(wmi::Variant::String(s)) => s.clone(),
+                        _ => "Unknown Display".to_string(),
+                    };
+                    current_monitors.insert(device_id.clone());
+                    known_monitor_names.insert(device_id, name);
                 }
                 
                 for old_dev in &previous_monitors {

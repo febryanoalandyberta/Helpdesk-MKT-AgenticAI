@@ -90,7 +90,8 @@ async def handle_incoming_chat(
     if ticket:
         # Append the follow-up message to existing ticket description
         ticket.description = (ticket.description or "") + f"\n\n[Follow-up dari Kasir]: {data.message}"
-        ticket.status = TicketStatus.TIER1_PROCESSING
+        if ticket.status != TicketStatus.ESCALATED:
+            ticket.status = TicketStatus.TIER1_PROCESSING
         await db.commit()
         await db.refresh(ticket)
     else:
@@ -121,9 +122,20 @@ async def handle_incoming_chat(
             db.add(ticket)
             await db.commit()
 
-    # 4. Trigger AI (CrewAI) in background
-    from api.tickets import process_ticket_ai
-    background_tasks.add_task(process_ticket_ai, str(ticket.ticket_id))
+    # 4. Save the user message to ChatMessage for polling/history
+    user_msg = ChatMessage(
+        ticket_id=str(ticket.ticket_id),
+        sender=ChatSender.USER,
+        message_type="TEXT",
+        content=data.message
+    )
+    db.add(user_msg)
+    await db.commit()
+
+    # 5. Trigger AI (CrewAI) in background ONLY if not escalated
+    if ticket.status != TicketStatus.ESCALATED:
+        from api.tickets import process_ticket_ai
+        background_tasks.add_task(process_ticket_ai, str(ticket.ticket_id))
 
     ai_response = (
         "Terima kasih sudah menginformasikan kendala ini. "
