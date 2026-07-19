@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, BackgroundTasks, WebSocketDisconnect, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -36,7 +36,11 @@ class ChatMessageRequest(BaseModel):
     sender: str = "User"
 
 @router.post("/incoming")
-async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depends(get_db)):
+async def handle_incoming_chat(
+    data: ChatMessageRequest, 
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
     # 1. Validate device
     q = await db.execute(select(Device).where(Device.device_id == data.device_id))
     device = q.scalar_one_or_none()
@@ -117,39 +121,15 @@ async def handle_incoming_chat(data: ChatMessageRequest, db: AsyncSession = Depe
             db.add(ticket)
             await db.commit()
 
-    # 4. Trigger AI (CrewAI)
-    ai_response = "Mohon ditunggu, laporan Anda sedang kami analisis..."
-    try:
-        from api.tickets import process_ticket_ai
-        await process_ticket_ai(str(ticket.ticket_id))
+    # 4. Trigger AI (CrewAI) in background
+    from api.tickets import process_ticket_ai
+    background_tasks.add_task(process_ticket_ai, str(ticket.ticket_id))
 
-        await db.refresh(ticket)
-        raw = ticket.ai_recommendation or ""
-
-        # Sanitize: filter internal CrewAI prompt leaks before sending to customer
-        internal_keywords = [
-            "Remember to follow ALL the rules",
-            "Your job is on the line",
-            "Thought:", "Action:", "Action Input:", "Observation:",
-            "Final Answer:", "I need to", "I should", "I will",
-            "Human:", "Assistant:", "System:", "> Entering", "> Finished",
-        ]
-        has_leak = any(kw.lower() in raw.lower() for kw in internal_keywords)
-        
-        import re
-        has_chinese = bool(re.search(r'[\u4e00-\u9fff]', raw))
-
-        if has_leak or has_chinese or not raw.strip():
-            ai_response = (
-                "Terima kasih sudah menginformasikan kendala ini. "
-                "Tim IT Helpdesk sedang menganalisis lebih lanjut dan akan segera memberikan solusi. "
-                "Mohon kesabarannya ya! 🙏"
-            )
-        else:
-            ai_response = raw
-    except Exception as e:
-        print(f"[Agent Chat] Failed to contact CrewAI: {e}")
-        ai_response = "Mohon ditunggu. Laporan Anda telah dicatat dan akan segera ditangani oleh tim IT Helpdesk."
+    ai_response = (
+        "Terima kasih sudah menginformasikan kendala ini. "
+        "Tim IT Helpdesk sedang menganalisis lebih lanjut dan akan segera memberikan solusi. "
+        "Mohon kesabarannya ya! 🙏"
+    )
 
     return {
         "status": "success",

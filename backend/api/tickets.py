@@ -350,6 +350,34 @@ async def process_ticket_ai(ticket_id: str):
                 await db.commit()
 
             logger.info(f"[TicketsAPI] AI processing complete for {ticket_id}")
+            
+            # Save AI recommendation to ChatMessage so agent UI can see it
+            try:
+                from models.chat import ChatMessage, ChatSender
+                from api.agent_chat import manager
+                
+                # Check if it was successfully parsed or not, use ai_recommendation directly since it was already populated
+                msg_content = ticket.ai_recommendation
+                if msg_content:
+                    agent_msg = ChatMessage(
+                        ticket_id=str(ticket.ticket_id),
+                        sender=ChatSender.AGENT,
+                        message_type="TEXT",
+                        content=msg_content
+                    )
+                    db.add(agent_msg)
+                    await db.commit()
+                    
+                    # Also try to push to live chat if connected
+                    try:
+                        await manager.broadcast(str(ticket.ticket_id), {
+                            "sender": "AGENT",
+                            "content": msg_content
+                        })
+                    except Exception:
+                        pass
+            except Exception as chat_err:
+                logger.error(f"[TicketsAPI] Failed to save AI chat message: {chat_err}")
 
         except Exception as e:
             logger.error(f"[TicketsAPI] AI processing error for {ticket_id}: {e}")

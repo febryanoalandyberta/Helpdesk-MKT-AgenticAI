@@ -207,7 +207,44 @@
     });
 
     let liveChatInterval = null;
+    let lastMessageCount = 0;
 
+    function startPolling() {
+      if (liveChatInterval) return; // already polling
+      lastMessageCount = 0;
+      
+      liveChatInterval = setInterval(async () => {
+        if (!currentTicketId) {
+          clearInterval(liveChatInterval);
+          liveChatInterval = null;
+          return;
+        }
+        try {
+          const messages = await invoke('poll_chat_messages', { ticketId: currentTicketId });
+          if (messages.length > lastMessageCount) {
+            const newMessages = messages.slice(lastMessageCount);
+            lastMessageCount = messages.length;
+            
+            for (const data of newMessages) {
+              // only show agent messages, since user messages are added directly locally
+              if (data.sender === 'AGENT') {
+                addMessage(data.content, 'ai');
+                appWindow.unminimize().catch(() => {});
+                appWindow.show().catch(() => {});
+                appWindow.setFocus().catch(() => {});
+                if (window.__TAURI__.notification) {
+                  window.__TAURI__.notification.sendNotification({
+                    title: 'IT Helpdesk', body: data.content.substring(0, 100)
+                  });
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Polling error', err);
+        }
+      }, 3000); // poll every 3 seconds
+    }
     // ── Live Chat Escalation (Fix #3) ──────────────────────────────
     async function requestLiveChat() {
       const escalateBtn = document.getElementById('escalate-btn');
@@ -226,38 +263,8 @@
         if (escalateBtn) { escalateBtn.textContent = '✅ Terhubung'; escalateBtn.disabled = true; }
         addMessage('✅ Anda sudah terhubung dengan IT Helpdesk. Silakan sampaikan pertanyaan Anda.', 'ai');
 
-        // Step 2: Start polling for new messages
-        let lastMessageCount = 0;
-        liveChatInterval = setInterval(async () => {
-          if (!isLiveChatMode) {
-            clearInterval(liveChatInterval);
-            return;
-          }
-          try {
-            const messages = await invoke('poll_chat_messages', { ticketId: currentTicketId });
-            if (messages.length > lastMessageCount) {
-              const newMessages = messages.slice(lastMessageCount);
-              lastMessageCount = messages.length;
-              
-              for (const data of newMessages) {
-                // only show agent messages, since user messages are added directly locally
-                if (data.sender === 'AGENT') {
-                  addMessage(data.content, 'ai');
-                  appWindow.unminimize().catch(() => {});
-                  appWindow.show().catch(() => {});
-                  appWindow.setFocus().catch(() => {});
-                  if (window.__TAURI__.notification) {
-                    window.__TAURI__.notification.sendNotification({
-                      title: 'IT Helpdesk', body: data.content.substring(0, 100)
-                    });
-                  }
-                }
-              }
-            }
-          } catch (err) {
-            console.error('Polling error', err);
-          }
-        }, 3000); // poll every 3 seconds
+        // Step 2: Ensure polling is active
+        startPolling();
 
       } catch (e) {
         console.error('Escalate error:', e);
@@ -276,7 +283,10 @@
         addMessage('✅ Tiket telah berhasil ditutup. Terima kasih!', 'system');
         
         isLiveChatMode = false;
-        if (liveChatInterval) clearInterval(liveChatInterval);
+        if (liveChatInterval) {
+          clearInterval(liveChatInterval);
+          liveChatInterval = null;
+        }
         document.getElementById('btn-close-ticket').style.display = 'none';
         currentTicketId = null;
       } catch (e) {
@@ -366,6 +376,7 @@
         if (response.ticket_id && response.ticket_id !== '') {
           currentTicketId = response.ticket_id;
           document.getElementById('btn-close-ticket').style.display = 'block';
+          startPolling();
         }
 
         if (messageCount >= 2) {
