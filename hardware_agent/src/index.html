@@ -232,11 +232,6 @@
                 appWindow.unminimize().catch(() => {});
                 appWindow.show().catch(() => {});
                 appWindow.setFocus().catch(() => {});
-                if (window.__TAURI__.notification) {
-                  window.__TAURI__.notification.sendNotification({
-                    title: 'IT Helpdesk', body: data.content.substring(0, 100)
-                  });
-                }
               }
             }
           }
