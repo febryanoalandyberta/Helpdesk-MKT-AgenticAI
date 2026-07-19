@@ -128,9 +128,19 @@ async def export_device_history_excel(
         cell.alignment = align_center
 
     # Write Data
+    from zoneinfo import ZoneInfo
+    jkt_tz = ZoneInfo("Asia/Jakarta")
+
     for row_num, log in enumerate(logs, 2):
+        local_time_str = ""
+        if log.time:
+            # log.time is naive UTC from DB, make it timezone-aware UTC, then convert to Asia/Jakarta
+            utc_time = log.time.replace(tzinfo=ZoneInfo("UTC"))
+            local_time = utc_time.astimezone(jkt_tz)
+            local_time_str = local_time.strftime("%Y-%m-%d %H:%M:%S")
+
         row_data = [
-            log.time.strftime("%Y-%m-%d %H:%M:%S") if log.time else "",
+            local_time_str,
             device.device_name,
             f"{log.cpu_usage:.1f}%" if log.cpu_usage is not None else "",
             f"{log.ram_usage:.1f}%" if log.ram_usage is not None else "",

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Preview Buttons</title>
+    <style>
+        :root {
+            --bg-card: #1e293b;
+            --border: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #22c55e;
+            --success-hover: #16a34a;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --text-main: #f8fafc;
+        }
+        body {
+            background-color: #0b1120;
+            color: #fff;
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 50px;
+        }
+        .table-cell {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 20px;
+            width: max-content;
+            border-radius: 8px;
+        }
+        button {
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-primary { background: var(--primary); }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+        
+        /* The proposed CSS grid container */
+        .action-buttons-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            width: 160px; /* Fixed width to make it perfectly aligned */
+        }
+        .action-buttons-grid button {
+            width: 100%;
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <h3>Usulan Tampilan (Sebelum)</h3>
+    <div class="table-cell">
+        <button class="btn-success" style="margin-right:4px; margin-bottom:4px; padding:8px 16px;">📡 Ping</button>
+        <button class="btn-primary" style="margin-right:4px; margin-bottom:4px; padding:8px 16px;">📜 Log</button><br>
+        <button class="btn-primary" style="margin-right:4px; margin-bottom:4px; padding:8px;">✏️</button>
+        <button class="btn-danger" style="margin-bottom:4px; padding:8px;">🗑️</button>
+    </div>
+
+    <br><br>
+
+    <h3>Usulan Tampilan (Sesudah - 2x2 Grid Seragam)</h3>
+    <div class="table-cell">
+        <div class="action-buttons-grid">
+            <button class="btn-success">📡 Ping</button>
+            <button class="btn-primary">📜 Log</button>
+            <button class="btn-primary">✏️ Edit</button>
+            <button class="btn-danger">🗑️ Hapus</button>
+        </div>
+    </div>
+</body>
+</html>

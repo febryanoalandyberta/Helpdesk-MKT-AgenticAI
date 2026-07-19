@@ -6,5 +6,6 @@ from .incident import IncidentMemory
 from .user import User
 from .audit_log import AuditLog
 from .telemetry_history import TelemetryLog
+from .port_checker import PortCheckerLog
 
-__all__ = ["Site", "Device", "Ticket", "IncidentMemory", "User", "AuditLog", "TelemetryLog"]
+__all__ = ["Site", "Device", "Ticket", "IncidentMemory", "User", "AuditLog", "TelemetryLog", "PortCheckerLog"]

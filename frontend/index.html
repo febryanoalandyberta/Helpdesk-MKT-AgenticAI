@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=3"/>
+<link rel="stylesheet" href="css/style.css?v=4"/>
 </head>
 <body>
 
@@ -60,10 +60,7 @@
     <a href="#" class="nav-item" data-page="devices">
       <span>Perangkat</span>
     </a>
-    <a href="#" class="nav-item" data-page="incidents">
-      <span>Incident Memory</span>
-      <span class="nav-badge" id="badge-incidents" style="display:none">0</span>
-    </a>
+
     <a href="#" class="nav-item" data-page="tier1" style="display:none">
       <span>Tier 1 Diagnostic</span>
     </a>
@@ -187,7 +184,7 @@
 
       <!-- SITE HEALTH GRID -->
       <div class="section-header">
-        <h2>Site Health — 18 Lokasi Sam's Studio's</h2>
+        <h2>Site Health</h2>
         <button class="btn-ghost btn-sm" onclick="loadSiteHealth()">🔄 Refresh</button>
       </div>
       <div class="site-grid" id="siteGrid">
@@ -300,7 +297,7 @@
             <tr>
               <th>Nama Device</th><th>Site / Lokasi</th><th>Tipe</th><th>IP Address</th><th>OS</th>
               <th>Kesehatan (CPU/RAM/Suhu)</th><th>Aktivitas Sekarang</th>
-              <th>Status</th><th>Last Ping</th><th>Aksi</th>
+              <th>Status</th><th>Port Status</th><th>Last Ping</th><th>Aksi</th>
             </tr>
           </thead>
           <tbody id="devicesBody">
@@ -322,22 +319,6 @@
       <div id="pingTerminal" style="padding: 16px; color: #a5b4fc; font-family: monospace; font-size: 13px; height: 220px; overflow-y: auto; white-space: pre-wrap; line-height: 1.5;">Menunggu perintah ping...</div>
     </div>
 
-    <!-- ═══════════════ PAGE: INCIDENTS ═══════════════ -->
-    <div id="page-incidents" class="page">
-      <div class="page-header">
-        <h1>Incident Memory</h1>
-      </div>
-      <div class="table-card">
-        <table class="data-table">
-          <thead>
-            <tr><th>Tanggal & Waktu</th><th>Summary</th><th>Root Cause</th><th>Site</th><th>Kategori</th><th>Tier</th></tr>
-          </thead>
-          <tbody id="incidentsBody">
-            <tr><td colspan="6" class="loading-state">Memuat incident memory...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
 
     <!-- ═══════════════ PAGE: TIER 1 DIAGNOSTIC ═══════════════ -->
     <div id="page-tier1" class="page">
@@ -768,9 +749,38 @@
   </div>
 </div>
 
+<!-- MODAL PORT CHECKER -->
+<div class="modal-overlay" id="portCheckerModalOverlay" onclick="closePortCheckerModal()"></div>
+<div class="modal" id="portCheckerModal" style="max-width: 800px;">
+  <div class="modal-header">
+    <h3 id="portCheckerModalTitle">Riwayat Port Checker</h3>
+    <button class="close-btn" onclick="closePortCheckerModal()">×</button>
+  </div>
+  <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+    <input type="hidden" id="portCheckerDeviceId" />
+    <table class="data-table" id="portCheckerTable">
+      <thead>
+        <tr>
+          <th>Waktu (UTC)</th>
+          <th>Kategori</th>
+          <th>Perangkat Terkait</th>
+          <th>Ringkasan</th>
+        </tr>
+      </thead>
+      <tbody id="portCheckerBody">
+        <tr><td colspan="4" class="loading-state">Memuat riwayat...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="modal-footer" style="display: flex; justify-content: space-between;">
+    <button class="btn-primary" onclick="downloadPortCheckerExcel()" style="background-color: #10b981; border: none;">📥 Download Excel</button>
+    <button class="btn-ghost" onclick="closePortCheckerModal()">Tutup</button>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<script src="js/app.js?v=34"></script>
+<script src="js/app.js?v=37"></script>
 </body>
 </html>

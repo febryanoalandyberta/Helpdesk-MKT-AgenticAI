@@ -28,7 +28,7 @@ class TelemetryLog(Base):
 
     def to_dict(self):
         return {
-            "time": self.time.isoformat() if self.time else None,
+            "time": self.time.isoformat() + "Z" if self.time else None,
             "device_id": str(self.device_id),
             "cpu_usage": self.cpu_usage,
             "ram_usage": self.ram_usage,

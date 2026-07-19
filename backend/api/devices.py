@@ -77,7 +77,21 @@ async def list_devices(
     query = query.order_by(Site.site_name.asc().nulls_last(), Device.device_name.asc())
     q = await db.execute(query)
     devices = q.scalars().all()
-    return {"devices": [d.to_dict() for d in devices], "total": len(devices)}
+
+    # Get unread port checker logs count
+    from models.port_checker import PortCheckerLog
+    from sqlalchemy import func
+    unread_query = select(PortCheckerLog.device_id, func.count(PortCheckerLog.log_id)).where(PortCheckerLog.is_read == False).group_by(PortCheckerLog.device_id)
+    unread_res = await db.execute(unread_query)
+    unread_counts = {row[0]: row[1] for row in unread_res.all() if row[0] is not None}
+
+    device_dicts = []
+    for d in devices:
+        d_dict = d.to_dict()
+        d_dict["unread_port_logs"] = unread_counts.get(str(d.device_id), 0)
+        device_dicts.append(d_dict)
+
+    return {"devices": device_dicts, "total": len(devices)}
 
 
 @router.get("/{device_id}")

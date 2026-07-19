@@ -493,7 +493,7 @@ async function loadDevices() {
       <td>
         <div style="font-size:11px; margin-bottom:4px">CPU: <strong>${d.status === 'OFFLINE' ? '—' : (d.cpu_usage ? d.cpu_usage.toFixed(1) + '%' : '—')}</strong></div>
         <div style="font-size:11px; margin-bottom:4px">RAM: <strong>${d.status === 'OFFLINE' ? '—' : (d.ram_usage ? d.ram_usage.toFixed(1) + '%' : '—')}</strong></div>
-        <div style="font-size:11px; margin-bottom:4px">Disk: <strong>${d.status === 'OFFLINE' ? '—' : (d.disk_free_gb ? d.disk_free_gb.toFixed(0) + 'GB / ' + d.disk_total_gb.toFixed(0) + 'GB' : '—')}</strong></div>
+        <div style="font-size:11px; margin-bottom:4px">Disk: <strong>${d.status === 'OFFLINE' ? '—' : formatDiskStorage(d.disk_free_gb, d.disk_total_gb)}</strong></div>
         <div style="font-size:11px">Suhu: <strong>${d.status === 'OFFLINE' ? '—' : (d.temperature ? d.temperature.toFixed(1) + '°C' : '—')}</strong></div>
       </td>
       <td>
@@ -501,12 +501,19 @@ async function loadDevices() {
         <div style="font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.current_active_url || ''}">URL: <span style="color:#dc2626;">${d.status === 'OFFLINE' ? '—' : (d.current_active_url || '—')}</span></div>
       </td>
       <td>${deviceStatusBadge(d.status)}</td>
+      <td>
+        ${d.unread_port_logs > 0 
+          ? `<div style="cursor:pointer; display:inline-block; background-color:#fef2f2; color:#ef4444; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:11px; border:1px solid #fca5a5;" onclick="openPortCheckerModal('${d.device_id}', '${d.device_name.replace(/'/g, "\\'")}')">🔴 ${d.unread_port_logs} Putus</div>` 
+          : `<div style="display:inline-block; background-color:#ecfdf5; color:#10b981; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:11px; border:1px solid #6ee7b7;">✅ Aman</div>`}
+      </td>
       <td style="color:#8892b0;font-size:11px">${d.last_health_check ? timeAgo(d.last_health_check) : (d.last_ping ? timeAgo(d.last_ping) : '—')}</td>
       <td>
-        <button class="btn-success" style="margin-right:4px; margin-bottom:4px;" onclick="pingDevice('${d.device_id}', '${d.ip_address || ''}', this)">📡 Ping</button>
-        <button class="btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="openHistoryModal('${d.device_id}', '${d.device_name.replace(/'/g, "\\'")}')">📜 Log</button>
-        <button class="btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="showEditDeviceModal('${d.device_id}', '${d.site_id || ''}', '${d.device_type}')">✏️</button>
-        <button class="btn-danger" style="margin-bottom:4px;" onclick="deleteDevice('${d.device_id}', '${d.device_name.replace(/'/g, "\\'")}')">🗑️</button>
+        <div class="action-buttons-grid">
+          <button class="btn-success" onclick="pingDevice('${d.device_id}', '${d.ip_address || ''}', this)">📡 Ping</button>
+          <button class="btn-primary" onclick="openHistoryModal('${d.device_id}', '${d.device_name.replace(/'/g, "\\'")}')">📜 Log</button>
+          <button class="btn-primary" onclick="showEditDeviceModal('${d.device_id}', '${d.site_id || ''}', '${d.device_type}')">✏️ Edit</button>
+          <button class="btn-danger" onclick="deleteDevice('${d.device_id}', '${d.device_name.replace(/'/g, "\\'")}')">🗑️ Hapus</button>
+        </div>
       </td>
     </tr>`).join('');
 }
@@ -886,10 +893,21 @@ function timeAgo(iso) {
   const d = new Date(iso + (iso.endsWith('Z') ? '' : 'Z'));
   let diff = (Date.now() - d.getTime()) / 1000;
   diff = Math.max(0, diff); // prevent negative if clock skewed
-  if (diff < 60) return `${Math.round(diff)}d lalu`;
-  if (diff < 3600) return `${Math.round(diff/60)}m lalu`;
-  if (diff < 86400) return `${Math.round(diff/3600)}j lalu`;
-  return `${Math.round(diff/86400)}h lalu`;
+  if (diff < 60) return `${Math.round(diff)} detik lalu`;
+  if (diff < 3600) return `${Math.round(diff/60)} mnt lalu`;
+  if (diff < 86400) return `${Math.round(diff/3600)} jam lalu`;
+  return `${Math.round(diff/86400)} hari lalu`;
+}
+
+function formatDiskStorage(freeGb, totalGb) {
+  if (totalGb == null || freeGb == null) return '—';
+  const usedGb = totalGb - freeGb;
+  const pct = totalGb > 0 ? Math.round((usedGb / totalGb) * 100) : 0;
+  const formatSize = (gb) => {
+    if (gb >= 1024) return (gb / 1024).toFixed(2) + 'TB';
+    return Math.round(gb) + 'GB';
+  };
+  return `${pct}% (${formatSize(usedGb)}/${formatSize(totalGb)})`;
 }
 
 function showToast(msg, type = 'info') {
@@ -1435,4 +1453,70 @@ function exportHistoryExcel() {
   const date = document.getElementById('historyDatePicker').value;
   showToast("Menyiapkan File Excel...", "info");
   window.open(`${API}/api/devices/${currentHistoryDeviceId}/history/export?start_date=${date}&end_date=${date}`, '_blank');
+}
+
+// ─── PORT CHECKER MODAL ─────────────────────
+let currentPortCheckerDeviceId = null;
+
+async function openPortCheckerModal(deviceId, deviceName) {
+  currentPortCheckerDeviceId = deviceId;
+  document.getElementById('portCheckerModalTitle').innerText = `🔌 Riwayat Port Checker - ${deviceName}`;
+  
+  const modalOverlay = document.getElementById('portCheckerModalOverlay');
+  const modal = document.getElementById('portCheckerModal');
+  modalOverlay.classList.add('show');
+  modal.style.display = 'block';
+  setTimeout(() => modal.classList.add('show'), 10);
+  
+  // Mark as read in backend
+  await apiFetch(`/api/port-checker/mark-read/${deviceId}`, { method: 'POST' });
+  
+  // Reload devices to clear the badge in the background
+  loadDevices();
+
+  fetchPortCheckerHistory();
+}
+
+function closePortCheckerModal() {
+  const modalOverlay = document.getElementById('portCheckerModalOverlay');
+  const modal = document.getElementById('portCheckerModal');
+  modal.classList.remove('show');
+  setTimeout(() => modal.style.display = 'none', 300);
+  modalOverlay.classList.remove('show');
+  currentPortCheckerDeviceId = null;
+}
+
+async function fetchPortCheckerHistory() {
+  if (!currentPortCheckerDeviceId) return;
+  const tbody = document.getElementById('portCheckerBody');
+  tbody.innerHTML = '<tr><td colspan="4" class="loading-state">Memuat riwayat...</td></tr>';
+  
+  try {
+    const data = await apiFetch(`/api/port-checker/${currentPortCheckerDeviceId}`);
+    if (data && data.logs) {
+      if (data.logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#94a3b8;">Tidak ada catatan putus port.</td></tr>`;
+      } else {
+        tbody.innerHTML = data.logs.map(log => {
+          const wkt = log.created_at ? new Date(log.created_at + 'Z').toLocaleString('id-ID') : '—';
+          return `
+            <tr>
+              <td style="color:#94a3b8">${wkt}</td>
+              <td><span class="badge badge-medium">${log.category || '—'}</span></td>
+              <td>${log.device_name || '—'}</td>
+              <td style="color:#ef4444">${log.summary}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+  } catch(e) {
+    console.error(e);
+    tbody.innerHTML = '<tr><td colspan="4" class="loading-state" style="color:red">Gagal memuat histori</td></tr>';
+  }
+}
+
+function downloadPortCheckerExcel() {
+  if (!currentPortCheckerDeviceId) return;
+  window.open(`${API}/api/port-checker/export/${currentPortCheckerDeviceId}`, '_blank');
 }

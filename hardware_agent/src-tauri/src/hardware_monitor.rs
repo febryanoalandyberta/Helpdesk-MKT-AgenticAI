@@ -54,7 +54,7 @@ async fn report_incident(app: &AppHandle, payload: IncidentPayload) {
         
     // Send to backend
     let client = reqwest::Client::new();
-    let url = format!("{}/incidents/", API_BASE);
+    let url = format!("{}/port-checker/", API_BASE);
     
     // Wait for auto-register ID if needed or just send anonymously with hostname
     let hostname = hostname::get().unwrap_or_default().to_string_lossy().into_owned();

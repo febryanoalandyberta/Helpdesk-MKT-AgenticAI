@@ -348,6 +348,24 @@ body {
   margin-top: 4px;
 }
 
+/* ─── ACTION BUTTONS GRID ────────────────── */
+.action-buttons-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  width: 170px;
+}
+.action-buttons-grid button {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 !important;
+}
+
 /* ─── KPI CARDS ──────────────────────────── */
 .kpi-grid {
   display: grid;

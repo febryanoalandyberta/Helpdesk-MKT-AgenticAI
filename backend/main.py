@@ -25,6 +25,7 @@ from api.tier1 import router as tier1_router
 from api.zammad_webhook import router as zammad_router, start_zammad_polling
 from api.agent_chat import router as agent_chat_router
 from api.history import router as history_router
+from api.port_checker import router as port_checker_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -100,6 +101,7 @@ app.include_router(tier1_router, prefix="/api/tier1", tags=["tier1"])
 app.include_router(zammad_router)
 app.include_router(agent_chat_router)
 app.include_router(history_router, prefix="/api/devices", tags=["history"])
+app.include_router(port_checker_router)
 
 # Serve frontend and uploads
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
