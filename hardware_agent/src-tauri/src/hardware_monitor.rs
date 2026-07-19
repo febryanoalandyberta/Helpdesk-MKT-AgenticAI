@@ -16,6 +16,7 @@ struct Win32_PnPEntity {
     name: Option<String>,
     description: Option<String>,
     status: Option<String>,
+    config_manager_error_code: Option<u32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -99,15 +100,17 @@ pub async fn start_hardware_monitor(app: AppHandle) {
         let mut lan_down_since: HashMap<String, std::time::Instant> = HashMap::new();
         
         // Initial population
-        if let Ok(usb_devices) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%' AND ConfigManagerErrorCode = 0") {
+        if let Ok(usb_devices) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
             for dev in usb_devices {
+                if dev.config_manager_error_code.unwrap_or(0) != 0 { continue; }
                 previous_usb.insert(dev.device_id.clone());
                 known_usb_names.insert(dev.device_id.clone(), dev.name.unwrap_or_else(|| "Unknown USB Device".to_string()));
             }
         }
         
-        if let Ok(monitors) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE PNPClass = 'Monitor' AND ConfigManagerErrorCode = 0") {
+        if let Ok(monitors) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE PNPClass = 'Monitor'") {
             for dev in monitors {
+                if dev.config_manager_error_code.unwrap_or(0) != 0 { continue; }
                 previous_monitors.insert(dev.device_id.clone());
                 known_monitor_names.insert(dev.device_id.clone(), dev.name.unwrap_or_else(|| "Unknown Display".to_string()));
             }
@@ -117,9 +120,12 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             std::thread::sleep(Duration::from_secs(5));
             
             // 1. Check USB Devices
-            if let Ok(usb_devices) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%' AND ConfigManagerErrorCode = 0") {
-                let current_usb: HashSet<String> = usb_devices.iter().map(|d| d.device_id.clone()).collect();
+            if let Ok(usb_devices) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE DeviceID LIKE 'USB%'") {
+                let current_usb: HashSet<String> = usb_devices.iter()
+                    .filter(|d| d.config_manager_error_code.unwrap_or(0) == 0)
+                    .map(|d| d.device_id.clone()).collect();
                 for d in &usb_devices {
+                    if d.config_manager_error_code.unwrap_or(0) != 0 { continue; }
                     known_usb_names.insert(d.device_id.clone(), d.name.clone().unwrap_or_else(|| "Unknown USB Device".to_string()));
                 }
                 
@@ -192,9 +198,12 @@ pub async fn start_hardware_monitor(app: AppHandle) {
             }
             
             // 3. Check Monitors/HDMI
-            if let Ok(monitors) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name FROM Win32_PnPEntity WHERE PNPClass = 'Monitor' AND ConfigManagerErrorCode = 0") {
-                let current_monitors: HashSet<String> = monitors.iter().map(|d| d.device_id.clone()).collect();
+            if let Ok(monitors) = wmi_con.raw_query::<Win32_PnPEntity>("SELECT DeviceID, Name, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE PNPClass = 'Monitor'") {
+                let current_monitors: HashSet<String> = monitors.iter()
+                    .filter(|d| d.config_manager_error_code.unwrap_or(0) == 0)
+                    .map(|d| d.device_id.clone()).collect();
                 for d in &monitors {
+                    if d.config_manager_error_code.unwrap_or(0) != 0 { continue; }
                     known_monitor_names.insert(d.device_id.clone(), d.name.clone().unwrap_or_else(|| "Unknown Display".to_string()));
                 }
                 

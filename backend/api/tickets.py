@@ -257,7 +257,10 @@ async def process_ticket_ai(ticket_id: str):
                                 else:
                                     ai_success = False
                                     ticket.ai_analysis = "Pengecekan manual diperlukan (Output AI Non-Standar)."
-                                    ticket.ai_recommendation = result_text[:800]
+                                    if "Thought:" in result_text or "Action:" in result_text:
+                                        ticket.ai_recommendation = "Analisis menunjukkan bahwa kendala ini memerlukan pengecekan lebih lanjut secara teknis. Laporan Anda telah kami teruskan (eskalasi), dan tim IT Support (PIC) kami akan segera menindaklanjutinya secara langsung. Mohon kesediaannya menunggu."
+                                    else:
+                                        ticket.ai_recommendation = result_text[:800]
                             else:
                                 ai_success = False
                                 ticket.ai_analysis = "Analisis selesai namun menemui kendala pemahaman."
