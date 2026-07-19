@@ -1,6 +1,6 @@
 {
   "name": "hardware-agent",
-  "version": "1.0.4",
+  "version": "1.2.0",
   "description": "MKT POS Hardware Telemetry Agent",
   "scripts": {
     "tauri": "tauri"
