@@ -15,8 +15,13 @@
 </head>
 <body>
 
+<!-- ═══════════════ SPLASH SCREEN ═══════════════ -->
+<div id="splashScreen" class="splash-overlay">
+  <div class="splash-spinner"></div>
+</div>
+
 <!-- ═══════════════ LOGIN PAGE ═══════════════ -->
-<div id="loginPage" class="login-overlay">
+<div id="loginPage" class="login-overlay hidden">
   <div class="login-box">
     <div class="login-logo">
       <img src="assets/logo.png" alt="MKT Logo" class="login-logo-img" style="width: 80px; height: auto; margin-bottom: 15px;">
@@ -167,7 +172,6 @@
           <div class="kpi-body">
             <div class="kpi-label">Device Online</div>
             <div class="kpi-value" id="kpi-devices">—</div>
-            <div class="kpi-sub">Dari 72 total perangkat</div>
           </div>
         </div>
         <div class="kpi-card kpi-teal">
@@ -264,7 +268,7 @@
         <div>
           <h1>Daftar Site</h1>
         </div>
-        <button class="btn-primary" onclick="showAddSiteModal()">+ Tambah Site</button>
+        <button id="btnAddSite" class="btn-primary" onclick="showAddSiteModal()">+ Tambah Site</button>
       </div>
       <div class="cards-grid" id="sitesCards">
         <div class="loading-state">Memuat sites...</div>
@@ -590,14 +594,14 @@
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
       <input type="date" id="historyDatePicker" style="padding:6px; border-radius:4px; background:#1e293b; color:#fff; border:1px solid #334155; font-size:13px;" onchange="fetchDeviceHistory()"/>
-      <button class="btn-primary" style="padding:6px 12px; font-size:13px;" onclick="exportHistoryExcel()">📥 Unduh Excel (.xlsx)</button>
+      <button class="btn-primary" style="padding:6px 12px; font-size:13px; background-color:#10b981; border:none;" onclick="exportHistoryExcel()">📥 Download Excel</button>
       <button class="modal-close" onclick="closeHistoryModal()">✕</button>
     </div>
   </div>
   <div class="modal-body" style="flex:1; overflow:hidden; padding:0; display:flex; flex-direction:column;">
     <div style="overflow-y:auto; flex:1;">
       <table class="table" style="margin-top:0;">
-        <thead style="position:sticky; top:0; z-index:2;">
+        <thead style="position:sticky; top:0; z-index:2; background-color:var(--bg-card);">
           <tr>
             <th>TIME</th>
             <th>CPU (%)</th>
@@ -751,30 +755,33 @@
 
 <!-- MODAL PORT CHECKER -->
 <div class="modal-overlay" id="portCheckerModalOverlay" onclick="closePortCheckerModal()"></div>
-<div class="modal" id="portCheckerModal" style="max-width: 800px;">
-  <div class="modal-header">
-    <h3 id="portCheckerModalTitle">Riwayat Port Checker</h3>
-    <button class="close-btn" onclick="closePortCheckerModal()">×</button>
+<div class="modal modal-wide" id="portCheckerModal" style="display:none; max-width:900px; height:85vh; flex-direction:column;">
+  <div class="modal-header" style="padding-bottom:10px;">
+    <div>
+      <h3 id="portCheckerModalTitle">🔌 Riwayat Port Checker</h3>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button class="btn-primary" onclick="downloadPortCheckerExcel()" style="padding:6px 12px; font-size:13px; background-color:#10b981; border:none;">📥 Download Excel</button>
+      <button class="modal-close" onclick="closePortCheckerModal()">✕</button>
+    </div>
   </div>
-  <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
-    <input type="hidden" id="portCheckerDeviceId" />
-    <table class="data-table" id="portCheckerTable">
-      <thead>
-        <tr>
-          <th>Waktu (UTC)</th>
-          <th>Kategori</th>
-          <th>Perangkat Terkait</th>
-          <th>Ringkasan</th>
-        </tr>
-      </thead>
-      <tbody id="portCheckerBody">
-        <tr><td colspan="4" class="loading-state">Memuat riwayat...</td></tr>
-      </tbody>
-    </table>
-  </div>
-  <div class="modal-footer" style="display: flex; justify-content: space-between;">
-    <button class="btn-primary" onclick="downloadPortCheckerExcel()" style="background-color: #10b981; border: none;">📥 Download Excel</button>
-    <button class="btn-ghost" onclick="closePortCheckerModal()">Tutup</button>
+  <div class="modal-body" style="flex:1; overflow:hidden; padding:0; display:flex; flex-direction:column;">
+    <div style="overflow-y:auto; flex:1; padding: 0 16px;">
+      <input type="hidden" id="portCheckerDeviceId" />
+      <table class="data-table" id="portCheckerTable" style="width: 100%; margin-top:0;">
+        <thead style="position:sticky; top:0; z-index:2; background-color:var(--bg-card);">
+          <tr>
+            <th style="white-space: nowrap;">Waktu (UTC)</th>
+            <th style="white-space: nowrap;">Kategori</th>
+            <th style="word-break: break-word;">Perangkat Terkait</th>
+            <th style="word-break: break-word;">Ringkasan</th>
+          </tr>
+        </thead>
+        <tbody id="portCheckerBody">
+          <tr><td colspan="4" class="loading-state">Memuat riwayat...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 

@@ -26,11 +26,17 @@ async function checkAuthAndInit() {
 }
 
 function showLoginPage() {
+  const splash = document.getElementById('splashScreen');
+  if (splash) splash.classList.add('hidden');
+  
   document.getElementById('loginPage').classList.remove('hidden');
   document.getElementById('loginUsername').focus();
 }
 
 function showDashboard() {
+  const splash = document.getElementById('splashScreen');
+  if (splash) splash.classList.add('hidden');
+  
   document.getElementById('loginPage').classList.add('hidden');
   updateUserUI();
   initNav();
@@ -79,6 +85,13 @@ function updateUserUI() {
   // Tampilkan menu User Management untuk semua user (sesuai request: semua akun bisa CRUD)
   const canManageUsers = true;
   document.getElementById('navUsers').style.display = canManageUsers ? 'flex' : 'none';
+
+  // Sembunyikan tombol "+ Tambah Site" untuk non-admin
+  const isAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'USER_ADMIN';
+  const btnAddSite = document.getElementById('btnAddSite');
+  if (btnAddSite) {
+    btnAddSite.style.display = isAdmin ? 'inline-block' : 'none';
+  }
 
   // Sembunyikan tombol "+ Tiket Baru" untuk GUEST
   if (currentUser.role === 'GUEST') {
@@ -373,8 +386,10 @@ async function loadSites() {
           <div><div class="sdc-name">${s.site_name}</div><div class="sdc-city">📍 ${s.city}</div></div>
         </div>
         <div style="display:flex; gap:8px;">
-          <button class="btn-primary" style="padding:4px 8px; font-size:12px" onclick="showEditSiteModal('${s.site_id}', ${escapedSite})">✏️</button>
-          <button class="btn-danger" style="padding:4px 8px; font-size:12px" onclick="deleteSite('${s.site_id}', '${safeName}')">🗑️</button>
+          ${(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'USER_ADMIN') ? `
+            <button class="btn-primary" style="padding:4px 8px; font-size:12px" onclick="showEditSiteModal('${s.site_id}', ${escapedSite})">✏️</button>
+            <button class="btn-danger" style="padding:4px 8px; font-size:12px" onclick="deleteSite('${s.site_id}', '${safeName}')">🗑️</button>
+          ` : ''}
         </div>
       </div>
       <div class="sdc-info">
@@ -511,8 +526,10 @@ async function loadDevices() {
         <div class="action-buttons-grid">
           <button class="btn-success" onclick="pingDevice('${d.device_id}', '${d.ip_address || ''}', this)">📡 Ping</button>
           <button class="btn-primary" onclick="openHistoryModal('${d.device_id}', '${d.device_name.replace(/'/g, "\\'")}')">📜 Log</button>
-          <button class="btn-primary" onclick="showEditDeviceModal('${d.device_id}', '${d.site_id || ''}', '${d.device_type}')">✏️ Edit</button>
-          <button class="btn-danger" onclick="deleteDevice('${d.device_id}', '${d.device_name.replace(/'/g, "\\'")}')">🗑️ Hapus</button>
+          ${(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'USER_ADMIN') ? `
+            <button class="btn-primary" onclick="showEditDeviceModal('${d.device_id}', '${d.site_id || ''}', '${d.device_type}')">✏️ Edit</button>
+            <button class="btn-danger" onclick="deleteDevice('${d.device_id}', '${d.device_name.replace(/'/g, "\\'")}')">🗑️ Hapus</button>
+          ` : ''}
         </div>
       </td>
     </tr>`).join('');
@@ -1312,9 +1329,9 @@ function appendChatMessage(data) {
   div.style.maxWidth = '80%';
   div.style.wordWrap = 'break-word';
   div.style.alignSelf = isAgent ? 'flex-end' : 'flex-start';
-  div.style.background = isAgent ? '#dc2626' : '#1e293b';
-  div.style.color = isAgent ? '#000' : '#fff';
-  div.style.border = isAgent ? 'none' : '1px solid #334155';
+  div.style.background = isAgent ? 'rgba(220, 38, 38, 0.15)' : '#1e293b';
+  div.style.color = isAgent ? '#e8eeff' : '#fff';
+  div.style.border = isAgent ? '1px solid rgba(220, 38, 38, 0.4)' : '1px solid #334155';
   
   const senderLabel = isAgent ? 'Anda (IT Helpdesk)' : 'Kasir';
   const timeLabel = new Date(data.timestamp || Date.now()).toLocaleTimeString('id-ID');
@@ -1327,7 +1344,7 @@ function appendChatMessage(data) {
     if (url.toLowerCase().match(/\.(png|jpe?g|gif)$/i)) {
       return `<br><a href="${url}" target="_blank"><img src="${url}" style="max-width:200px; border-radius:4px; margin-top:5px;"/></a>`;
     }
-    return `<br><a href="${url}" target="_blank" style="color: ${isAgent ? '#000' : '#fff'}; text-decoration: underline;">📄 Lampiran</a>`;
+    return `<br><a href="${url}" target="_blank" style="color: ${isAgent ? '#e8eeff' : '#fff'}; text-decoration: underline;">📄 Lampiran</a>`;
   });
 
   if (data.message_type === 'FILE' && data.content.startsWith('/uploads/')) {
@@ -1465,7 +1482,7 @@ async function openPortCheckerModal(deviceId, deviceName) {
   const modalOverlay = document.getElementById('portCheckerModalOverlay');
   const modal = document.getElementById('portCheckerModal');
   modalOverlay.classList.add('show');
-  modal.style.display = 'block';
+  modal.style.display = 'flex';
   setTimeout(() => modal.classList.add('show'), 10);
   
   // Mark as read in backend
@@ -1501,8 +1518,8 @@ async function fetchPortCheckerHistory() {
           const wkt = log.created_at ? new Date(log.created_at + 'Z').toLocaleString('id-ID') : '—';
           return `
             <tr>
-              <td style="color:#94a3b8">${wkt}</td>
-              <td><span class="badge badge-medium">${log.category || '—'}</span></td>
+              <td style="color:#94a3b8; white-space: nowrap;">${wkt}</td>
+              <td><span class="badge badge-medium">${(log.category || '—').replace(/_/g, ' ')}</span></td>
              <td>${(log.hardware_type || '') + ' - ' + (log.hardware_name || '—')}</td>
               <td style="color:#ef4444">${log.summary}</td>
             </tr>
