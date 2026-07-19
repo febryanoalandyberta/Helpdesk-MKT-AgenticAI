@@ -16,6 +16,9 @@
       "dialog": {
         "all": true
       },
+      "notification": {
+        "all": true
+      },
       "window": {
         "all": true
       },
