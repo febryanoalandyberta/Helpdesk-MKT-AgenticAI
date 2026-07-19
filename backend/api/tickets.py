@@ -353,7 +353,7 @@ async def process_ticket_ai(ticket_id: str):
             
             # Save AI recommendation to ChatMessage so agent UI can see it
             try:
-                from models.chat import ChatMessage, ChatSender
+                from models.ticket import ChatMessage, ChatSender
                 from api.agent_chat import manager
                 
                 # Check if it was successfully parsed or not, use ai_recommendation directly since it was already populated
