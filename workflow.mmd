@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant C as Zammad (Customer)
+    participant BE as Backend (FastAPI)
+    participant AI as CrewAI Engine
+    participant DB as PostgreSQL
+    participant T as Telegram
+    participant O as Dashboard (Operator)
+
+    C->>BE: Webhook / Polling (Tiket Baru)
+    BE->>DB: Simpan ke tabel Ticket & AuditLog
+    BE->>C: Auto-reply "Halo, laporan diterima..."
+    BE->>AI: Trigger Analisis AI (Tier 0)
+    AI->>AI: Eksekusi Llama-3 & Cari Solusi
+    AI-->>BE: Kirim Hasil Diagnosis & Solusi
+    BE->>C: Update Tiket Zammad dengan Solusi AI
+    BE->>T: Notifikasi Tiket Baru ke Telegram IT
+    BE->>O: Update Dashboard via WebSocket

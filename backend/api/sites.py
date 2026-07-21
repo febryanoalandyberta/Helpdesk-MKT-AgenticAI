@@ -9,6 +9,7 @@ from typing import Optional
 from database import get_db
 from models.site import Site
 from models.device import Device
+from api.auth import require_admin, User
 
 router = APIRouter(prefix="/api/sites", tags=["Sites"])
 
@@ -62,7 +63,7 @@ async def get_site_devices(site_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/")
-async def create_site(data: CreateSiteRequest, db: AsyncSession = Depends(get_db)):
+async def create_site(data: CreateSiteRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_admin)):
     site = Site(**data.dict())
     db.add(site)
     await db.commit()
@@ -71,7 +72,7 @@ async def create_site(data: CreateSiteRequest, db: AsyncSession = Depends(get_db
 
 
 @router.put("/{site_id}")
-async def update_site(site_id: str, data: CreateSiteRequest, db: AsyncSession = Depends(get_db)):
+async def update_site(site_id: str, data: CreateSiteRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_admin)):
     q = await db.execute(select(Site).where(Site.site_id == site_id))
     site = q.scalar_one_or_none()
     if not site:
@@ -84,7 +85,7 @@ async def update_site(site_id: str, data: CreateSiteRequest, db: AsyncSession = 
 
 
 @router.delete("/{site_id}")
-async def delete_site(site_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_site(site_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_admin)):
     # Cek apakah masih ada device di site ini
     q_devices = await db.execute(select(Device).where(Device.site_id == site_id))
     devices = q_devices.scalars().all()

@@ -86,12 +86,15 @@ async def handle_telegram_command(text: str, chat_id: int, sender_name: str = "T
         ticket_id_str = parts[1].replace("#", "")
         from api.zammad_webhook import zammad_client
         async with AsyncSessionLocal() as db:
-            q = await db.execute(select(Ticket).where(Ticket.zammad_ticket_id == ticket_id_str))
+            q = await db.execute(select(Ticket).where(
+                (Ticket.zammad_ticket_id == ticket_id_str) | (cast(Ticket.ticket_id, String).startswith(ticket_id_str))
+            ))
             ticket = q.scalar_one_or_none()
             if ticket:
                 ticket.status = TicketStatus.CLOSED
                 await db.commit()
-                await zammad_client.update_ticket(int(ticket_id_str), "✅ Tiket ditutup dari Telegram oleh Admin.", state="closed")
+                if ticket.zammad_ticket_id:
+                    await zammad_client.update_ticket(int(ticket.zammad_ticket_id), "✅ Tiket ditutup dari Telegram oleh Admin.", state="closed")
                 await send_telegram_message(f"✅ Tiket #{ticket_id_str} berhasil ditutup.", str(chat_id))
             else:
                 await send_telegram_message(f"❌ Tiket #{ticket_id_str} tidak ditemukan.", str(chat_id))
@@ -100,13 +103,16 @@ async def handle_telegram_command(text: str, chat_id: int, sender_name: str = "T
         ticket_id_str = parts[1].replace("#", "")
         from api.zammad_webhook import zammad_client
         async with AsyncSessionLocal() as db:
-            q = await db.execute(select(Ticket).where(Ticket.zammad_ticket_id == ticket_id_str))
+            q = await db.execute(select(Ticket).where(
+                (Ticket.zammad_ticket_id == ticket_id_str) | (cast(Ticket.ticket_id, String).startswith(ticket_id_str))
+            ))
             ticket = q.scalar_one_or_none()
             if ticket:
                 ticket.status = TicketStatus.ESCALATED
                 ticket.escalated = True
                 await db.commit()
-                await zammad_client.update_ticket(int(ticket_id_str), "⚠️ TIKET DIESKALASI dari Telegram oleh Admin.")
+                if ticket.zammad_ticket_id:
+                    await zammad_client.update_ticket(int(ticket.zammad_ticket_id), "⚠️ TIKET DIESKALASI dari Telegram oleh Admin.")
                 await send_telegram_message(f"✅ Tiket #{ticket_id_str} berhasil dieskalasi.", str(chat_id))
             else:
                 await send_telegram_message(f"❌ Tiket #{ticket_id_str} tidak ditemukan.", str(chat_id))

@@ -3,6 +3,7 @@ Port Checker API — Manages hardware physical connection incidents
 """
 import io
 import openpyxl
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, update
@@ -94,9 +95,22 @@ async def export_port_logs(device_id: str, db: AsyncSession = Depends(get_db)):
     ws = wb.active
     ws.title = "Port Checker History"
 
+    # Define Styles
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1F497D", end_color="1F497D", fill_type="solid")
+    thin_border = Border(left=Side(style='thin'), 
+                         right=Side(style='thin'), 
+                         top=Side(style='thin'), 
+                         bottom=Side(style='thin'))
+    align_center = Alignment(horizontal="center", vertical="center")
+
     headers = ["Waktu (WIB)", "Kategori", "Perangkat Terkait", "Ringkasan", "Status"]
     for col_num, header_title in enumerate(headers, 1):
-        ws.cell(row=1, column=col_num, value=header_title)
+        cell = ws.cell(row=1, column=col_num, value=header_title)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = thin_border
+        cell.alignment = align_center
 
     from zoneinfo import ZoneInfo
     jkt_tz = ZoneInfo("Asia/Jakarta")
@@ -108,13 +122,36 @@ async def export_port_logs(device_id: str, db: AsyncSession = Depends(get_db)):
             local_time = utc_time.astimezone(jkt_tz)
             local_time_str = local_time.strftime("%Y-%m-%d %H:%M:%S")
 
-        ws.cell(row=row_num, column=1, value=local_time_str)
-        ws.cell(row=row_num, column=2, value=l.category or "-")
-        # Kombinasikan Hardware Type & Name untuk kejelasan
         hardware_desc = f"{l.hardware_type or ''} - {l.hardware_name or ''}".strip(' -')
-        ws.cell(row=row_num, column=3, value=hardware_desc if hardware_desc else "-")
-        ws.cell(row=row_num, column=4, value=l.summary or "-")
-        ws.cell(row=row_num, column=5, value="Sudah Dibaca" if l.is_read else "Belum Dibaca")
+        
+        row_data = [
+            local_time_str,
+            l.category or "-",
+            hardware_desc if hardware_desc else "-",
+            l.summary or "-",
+            "Sudah Dibaca" if l.is_read else "Belum Dibaca"
+        ]
+
+        for col_num, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_num, column=col_num, value=value)
+            cell.border = thin_border
+            if col_num in [1, 2, 5]:  # Center align timestamp, category, status
+                cell.alignment = align_center
+
+    # Auto-adjust column widths
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter # Get the column name
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        if adjusted_width > 50:
+            adjusted_width = 50
+        ws.column_dimensions[column].width = adjusted_width
 
     output = io.BytesIO()
     wb.save(output)

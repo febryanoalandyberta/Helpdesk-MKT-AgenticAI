@@ -1,0 +1,31 @@
+graph TD
+    subgraph Hardware Layer
+        A[PC Kasir / Hardware Agent]
+    end
+
+    subgraph Docker Infrastructure
+        B[Backend: FastAPI]
+        C[(PostgreSQL / TimescaleDB)]
+        R[(Redis Cache)]
+        V[(ChromaDB Vector Store)]
+        D[AI Engine: CrewAI]
+    end
+
+    subgraph User Interface
+        E[Dashboard Frontend]
+    end
+
+    subgraph External Services
+        F[Zammad Ticketing]
+        G[Telegram Bot]
+    end
+
+    A -->|POST /api/telemetry| B
+    A -->|POST /api/devices/id/hardware-alert| B
+    B <-->|WebSocket & REST API| E
+    B -->|CRUD| C
+    B -->|Cache| R
+    B -->|POST /api/analyze| D
+    D -->|Vector Search| V
+    B <-->|REST API & Webhooks| F
+    B -->|Push Alerts| G

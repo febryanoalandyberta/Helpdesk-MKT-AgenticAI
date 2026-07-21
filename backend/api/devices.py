@@ -9,6 +9,7 @@ from typing import Optional
 from datetime import datetime
 from database import get_db
 from models.device import Device, DeviceStatus
+from api.auth import require_admin, User
 
 router = APIRouter(prefix="/api/devices", tags=["Devices"])
 
@@ -194,7 +195,7 @@ async def receive_telemetry(
 
 
 @router.post("/")
-async def create_device(data: CreateDeviceRequest, db: AsyncSession = Depends(get_db)):
+async def create_device(data: CreateDeviceRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_admin)):
     from models.site import Site
     import uuid
 
