@@ -45,6 +45,7 @@ class Device(Base):
     operating_system = Column(String(100), nullable=True)
     os_version = Column(String(100), nullable=True)
     hardware_model = Column(String(200), nullable=True)
+    hardware_id = Column(String(100), nullable=True)
 
     # Health & Telemetry
     cpu_usage = Column(Float, nullable=True)
@@ -114,6 +115,7 @@ class Device(Base):
             "operating_system": self.operating_system,
             "os_version": self.os_version,
             "hardware_model": self.hardware_model,
+            "hardware_id": self.hardware_id,
             "cpu_usage": self.cpu_usage if agent_alive else None,
             "ram_usage": self.ram_usage if agent_alive else None,
             "disk_usage": self.disk_usage if agent_alive else None,

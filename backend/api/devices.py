@@ -21,6 +21,7 @@ class AutoRegisterRequest(BaseModel):
     operating_system: Optional[str] = None
     os_version: Optional[str] = None
     hardware_model: Optional[str] = None
+    hardware_id: Optional[str] = None
 
 
 class TelemetryRequest(BaseModel):
@@ -118,6 +119,8 @@ async def auto_register_device(data: AutoRegisterRequest, db: AsyncSession = Dep
             device.operating_system = data.operating_system
         if data.os_version:
             device.os_version = data.os_version
+        if data.hardware_id:
+            device.hardware_id = data.hardware_id
         device.last_seen = datetime.utcnow()
         device.status = DeviceStatus.ONLINE
         await db.commit()

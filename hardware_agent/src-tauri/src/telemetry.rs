@@ -13,6 +13,7 @@ struct AutoRegisterRequest {
     ip_address: String,
     operating_system: String,
     os_version: String,
+    hardware_id: String,
 }
 
 #[derive(Serialize)]
@@ -81,12 +82,32 @@ async fn auto_register() -> Option<String> {
     sys.refresh_all();
     let os_version = sys.long_os_version().unwrap_or_else(|| sys.os_version().unwrap_or_else(|| "Unknown".to_string()));
     
+    let hardware_id = if cfg!(target_os = "windows") {
+        let output = std::process::Command::new("wmic")
+            .args(&["csproduct", "get", "uuid"])
+            .output();
+        if let Ok(out) = output {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let lines: Vec<&str> = stdout.lines().collect();
+            if lines.len() > 1 {
+                lines[1].trim().to_string()
+            } else {
+                "UNKNOWN_HWID".to_string()
+            }
+        } else {
+            "UNKNOWN_HWID".to_string()
+        }
+    } else {
+        "UNKNOWN_HWID".to_string()
+    };
+    
     let payload = AutoRegisterRequest {
         mac_address: mac,
         hostname: hostname_str,
         ip_address: get_local_ip(),
         operating_system: sys.name().unwrap_or_else(|| std::env::consts::OS.to_string()),
         os_version: os_version,
+        hardware_id,
     };
 
     let client = reqwest::Client::new();

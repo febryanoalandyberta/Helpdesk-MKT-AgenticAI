@@ -495,7 +495,7 @@ async function loadDevices() {
     <tr>
       <td>
         <strong>${d.device_name}</strong>
-        <div style="font-size:10px; color:#8892b0; font-family:monospace; margin-top:4px;">ID: ${d.device_id}</div>
+        <div style="font-size:10px; color:#8892b0; font-family:monospace; margin-top:4px;" title="DB ID: ${d.device_id}">HW ID: ${d.hardware_id || '—'}</div>
       </td>
       <td>
         <span style="color:${d.site_name ? '#8892b0' : '#dc2626'}; font-size:12px;">
@@ -503,7 +503,10 @@ async function loadDevices() {
         </span>
       </td>
       <td><span class="badge badge-medium">${d.device_type}</span></td>
-      <td><code style="color:#94a3b8">${d.ip_address || '—'}</code></td>
+      <td>
+        <code style="color:#94a3b8">${d.ip_address || '—'}</code>
+        <div style="font-size:10px; color:#8892b0; font-family:monospace; margin-top:4px;">MAC: ${d.mac_address || '—'}</div>
+      </td>
       <td style="color:#8892b0">${d.operating_system || '—'} ${d.os_version || ''}</td>
       <td>
         <div style="font-size:11px; margin-bottom:4px">CPU: <strong>${d.status === 'OFFLINE' ? '—' : (d.cpu_usage ? d.cpu_usage.toFixed(1) + '%' : '—')}</strong></div>
