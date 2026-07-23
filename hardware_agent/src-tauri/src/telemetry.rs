@@ -6,6 +6,23 @@ use std::fs;
 use mac_address::get_mac_address;
 use hostname::get as get_hostname;
 
+fn get_hardware_id_safe() -> String {
+    if cfg!(target_os = "windows") {
+        let output = std::process::Command::new("wmic")
+            .args(&["csproduct", "get", "uuid"])
+            .output();
+        if let Ok(out) = output {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let lines: Vec<&str> = stdout.lines().collect();
+            if lines.len() > 1 {
+                return lines[1].trim().to_string();
+            }
+        }
+    }
+    "UNKNOWN_HWID".to_string()
+}
+
+
 #[derive(Serialize)]
 struct AutoRegisterRequest {
     mac_address: String,
@@ -29,6 +46,7 @@ struct TelemetryRequest {
     current_active_url: Option<String>,
     operating_system: Option<String>,
     os_version: Option<String>,
+    hardware_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -82,24 +100,7 @@ async fn auto_register() -> Option<String> {
     sys.refresh_all();
     let os_version = sys.long_os_version().unwrap_or_else(|| sys.os_version().unwrap_or_else(|| "Unknown".to_string()));
     
-    let hardware_id = if cfg!(target_os = "windows") {
-        let output = std::process::Command::new("wmic")
-            .args(&["csproduct", "get", "uuid"])
-            .output();
-        if let Ok(out) = output {
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            let lines: Vec<&str> = stdout.lines().collect();
-            if lines.len() > 1 {
-                lines[1].trim().to_string()
-            } else {
-                "UNKNOWN_HWID".to_string()
-            }
-        } else {
-            "UNKNOWN_HWID".to_string()
-        }
-    } else {
-        "UNKNOWN_HWID".to_string()
-    };
+    let hardware_id = get_hardware_id_safe();
     
     let payload = AutoRegisterRequest {
         mac_address: mac,
@@ -184,6 +185,7 @@ pub async fn start_telemetry_loop(_app: AppHandle) {
             current_active_url: app_title,
             operating_system: Some(sys.name().unwrap_or_else(|| std::env::consts::OS.to_string())),
             os_version: Some(sys.long_os_version().unwrap_or_else(|| sys.os_version().unwrap_or_else(|| "Unknown".to_string()))),
+            hardware_id: Some(get_hardware_id_safe()),
         };
         
         let url = format!("{}/devices/{}/telemetry", API_BASE, device_id);
