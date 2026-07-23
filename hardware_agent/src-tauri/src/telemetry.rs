@@ -13,6 +13,26 @@ fn get_hardware_id_safe() -> String {
     #[cfg(target_os = "windows")]
     {
         const CREATE_NO_WINDOW: u32 = 0x08000000;
+        
+        // Coba ambil Windows Device ID dari Registry (seperti yang tampil di menu About)
+        let reg_output = std::process::Command::new("reg")
+            .args(&["query", r"HKLM\SOFTWARE\Microsoft\SQMClient", "/v", "MachineId"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output();
+            
+        if let Ok(out) = reg_output {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            if let Some(idx) = stdout.find("REG_SZ") {
+                let id_part = &stdout[idx + "REG_SZ".len()..];
+                let id = id_part.trim();
+                let clean_id = id.trim_start_matches('{').trim_end_matches('}');
+                if !clean_id.is_empty() {
+                    return clean_id.to_string();
+                }
+            }
+        }
+
+        // Fallback: Ambil Physical Motherboard UUID jika Registry gagal
         let output = std::process::Command::new("wmic")
             .args(&["csproduct", "get", "uuid"])
             .creation_flags(CREATE_NO_WINDOW)
