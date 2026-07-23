@@ -36,6 +36,7 @@ class TelemetryRequest(BaseModel):
     current_active_url: Optional[str] = None
     operating_system: Optional[str] = None
     os_version: Optional[str] = None
+    hardware_id: Optional[str] = None
 
 
 class CreateDeviceRequest(BaseModel):
@@ -107,9 +108,9 @@ async def get_device(device_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/auto-register")
 async def auto_register_device(data: AutoRegisterRequest, db: AsyncSession = Depends(get_db)):
-    # Check if a device with this MAC address already exists
-    q = await db.execute(select(Device).where(Device.mac_address == data.mac_address))
-    device = q.scalar_one_or_none()
+    # Check if a device with this MAC address already exists (ambil yang paling baru untuk mencegah crash jika ada duplikat)
+    q = await db.execute(select(Device).where(Device.mac_address == data.mac_address).order_by(Device.created_at.desc()))
+    device = q.scalars().first()
 
     if device:
         # Update existing device info
@@ -121,6 +122,11 @@ async def auto_register_device(data: AutoRegisterRequest, db: AsyncSession = Dep
             device.os_version = data.os_version
         if data.hardware_id:
             device.hardware_id = data.hardware_id
+            
+        # Jika sebelumnya perangkat di-soft-delete, aktifkan kembali
+        if not device.is_active:
+            device.is_active = True
+            
         device.last_seen = datetime.utcnow()
         device.status = DeviceStatus.ONLINE
         await db.commit()
@@ -177,6 +183,12 @@ async def receive_telemetry(
         device.operating_system = data.operating_system
     if data.os_version:
         device.os_version = data.os_version
+    if data.hardware_id:
+        device.hardware_id = data.hardware_id
+
+    # Jika sebelumnya perangkat di-soft-delete, aktifkan kembali
+    if not device.is_active:
+        device.is_active = True
 
     device.status = DeviceStatus.ONLINE
     device.last_seen = datetime.utcnow()
@@ -363,7 +375,8 @@ async def delete_device(
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
     
-    await db.delete(device)
+    device.is_active = False
+    device.status = DeviceStatus.OFFLINE
     await db.commit()
     return {"message": "Device deleted successfully"}
 

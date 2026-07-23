@@ -6,10 +6,16 @@ use std::fs;
 use mac_address::get_mac_address;
 use hostname::get as get_hostname;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 fn get_hardware_id_safe() -> String {
-    if cfg!(target_os = "windows") {
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
         let output = std::process::Command::new("wmic")
             .args(&["csproduct", "get", "uuid"])
+            .creation_flags(CREATE_NO_WINDOW)
             .output();
         if let Ok(out) = output {
             let stdout = String::from_utf8_lossy(&out.stdout);
@@ -141,6 +147,7 @@ pub async fn start_telemetry_loop(_app: AppHandle) {
     }
     
     let device_id = device_id.unwrap();
+    let cached_hardware_id = get_hardware_id_safe();
     
     loop {
         sys.refresh_all();
@@ -185,7 +192,7 @@ pub async fn start_telemetry_loop(_app: AppHandle) {
             current_active_url: app_title,
             operating_system: Some(sys.name().unwrap_or_else(|| std::env::consts::OS.to_string())),
             os_version: Some(sys.long_os_version().unwrap_or_else(|| sys.os_version().unwrap_or_else(|| "Unknown".to_string()))),
-            hardware_id: Some(get_hardware_id_safe()),
+            hardware_id: Some(cached_hardware_id.clone()),
         };
         
         let url = format!("{}/devices/{}/telemetry", API_BASE, device_id);
